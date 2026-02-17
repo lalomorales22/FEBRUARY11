@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VRM Webcam Tracker</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #0e0e10;
+        color: #efeff1;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px;
+    }
+
+    h1 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #9147ff;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        color: rgba(255,255,255,0.4);
+        margin-bottom: 20px;
+    }
+
+    .video-container {
+        position: relative;
+        width: 480px;
+        max-width: 90vw;
+        aspect-ratio: 4/3;
+        background: #18181b;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #2a2a2e;
+        margin-bottom: 16px;
+    }
+
+    #webcam-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scaleX(-1);  /* mirror */
+    }
+
+    .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #18181b;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        min-width: 300px;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #666;
+        transition: background 0.3s;
+    }
+
+    .status-dot.active { background: #00e676; box-shadow: 0 0 8px #00e67688; }
+    .status-dot.loading { background: #ff9800; animation: pulse 1s ease infinite; }
+    .status-dot.error { background: #ff5252; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .status-text {
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+        flex: 1;
+    }
+
+    .stats {
+        display: flex;
+        gap: 20px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.35);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        color: rgba(255,255,255,0.6);
+        font-weight: 600;
+    }
+
+    .controls {
+        display: flex;
+        gap: 8px;
+    }
+
+    button {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #9147ff;
+        color: white;
+    }
+    .btn-primary:hover { background: #7c3aed; }
+    .btn-primary:disabled { background: #444; cursor: not-allowed; }
+
+    .btn-secondary {
+        background: #2a2a2e;
+        color: #ccc;
+    }
+    .btn-secondary:hover { background: #3a3a3e; }
+
+    .info-box {
+        margin-top: 20px;
+        padding: 14px 18px;
+        background: #18181b;
+        border-radius: 8px;
+        border-left: 3px solid #9147ff;
+        max-width: 480px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: rgba(255,255,255,0.5);
+    }
+
+    .info-box code {
+        background: #2a2a2e;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #9147ff;
+    }
+</style>
+</head>
+<body>
+
+<h1>VRM Webcam Tracker</h1>
+<p class="subtitle">Captures your face &amp; body → sends to avatar overlay via Socket.IO</p>
+
+<div class="video-container">
+    <video id="webcam-video" playsinline muted></video>
+</div>
+
+<div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="status-text" id="status-text">Initializing...</span>
+</div>
+
+<div class="stats" id="stats">
+    <span>FPS: <span class="stat-value" id="stat-fps">--</span></span>
+    <span>FACE: <span class="stat-value" id="stat-face">--</span></span>
+    <span>POSE: <span class="stat-value" id="stat-pose">--</span></span>
+    <span>HANDS: <span class="stat-value" id="stat-hands">--</span></span>
+    <span>SOCKET: <span class="stat-value" id="stat-socket">--</span></span>
+</div>
+
+<div style="height: 12px;"></div>
+
+<div class="controls">
+    <button class="btn-primary" id="btn-start" onclick="startTracking()">Start Tracking</button>
+    <button class="btn-secondary" id="btn-stop" onclick="stopTracking()" disabled>Stop</button>
+</div>
+
+<div class="info-box">
+    <strong>How it works:</strong><br>
+    This page captures your webcam, runs MediaPipe face/body detection, converts landmarks
+    to VRM bone rotations via Kalidokit, and sends the data over Socket.IO to the server.<br><br>
+    The avatar overlay (<code>/overlay/avatar</code>) receives this data and applies it to
+    the 3D model — no webcam needed in OBS.<br><br>
+    <strong>Keep this tab open</strong> while streaming. The avatar in OBS will mirror your movements.
+</div>
+
+<!-- Socket.IO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+
+<!-- MediaPipe Holistic + Camera Utils -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/holistic.js"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+        crossorigin="anonymous"></script>
+
+<!-- Kalidokit UMD -->
+<script src="https://cdn.jsdelivr.net/npm/kalidokit@1.1.5/dist/kalidokit.umd.js"
+        crossorigin="anonymous"></script>
+
+<script>
+    /* ── Globals ───────────────────────────── */
+    const KFace = Kalidokit.Face;
+    const KPose = Kalidokit.Pose;
+    const KHand = Kalidokit.Hand;
+
+    const videoEl   = document.getElementById('webcam-video');
+    const statusDot = document.getElementById('status-dot');
+    const statusTxt = document.getElementById('status-text');
+    const statFps   = document.getElementById('stat-fps');
+    const statFace  = document.getElementById('stat-face');
+    const statPose  = document.getElementById('stat-pose');
+    const statHands = document.getElementById('stat-hands');
+    const statSocket = document.getElementById('stat-socket');
+    const btnStart  = document.getElementById('btn-start');
+    const btnStop   = document.getElementById('btn-stop');
+
+    let socket      = null;
+    let holistic    = null;
+    let mpCamera    = null;
+    let running     = false;
+
+    /* FPS tracking */
+    let frameCount  = 0;
+    let lastFpsTime = performance.now();
+
+    /* ── Socket.IO ─────────────────────────── */
+    try {
+        socket = io();
+        socket.on('connect', () => {
+            statSocket.textContent = 'OK';
+            console.log('[Tracker] Socket connected');
+        });
+        socket.on('disconnect', () => {
+            statSocket.textContent = 'LOST';
+            console.warn('[Tracker] Socket disconnected');
+        });
+    } catch (e) {
+        console.error('[Tracker] Socket.IO failed:', e);
+        statSocket.textContent = 'ERR';
+    }
+
+    function setStatus(type, msg) {
+        statusDot.className = 'status-dot ' + type;
+        statusTxt.textContent = msg;
+    }
+
+    /* ── Holistic results → emit rig data ──── */
+    function onHolisticResults(results) {
+        if (!running || !socket?.connected) return;
+
+        const face = results.faceLandmarks
+            ? KFace.solve(results.faceLandmarks, {
+                  runtime: 'mediapipe',
+                  video: videoEl,
+                  smoothBlink: true,
+                  blinkSettings: [0.25, 0.75],
+              })
+            : null;
+
+        const pose = (results.poseWorldLandmarks && results.poseLandmarks)
+            ? KPose.solve(results.poseWorldLandmarks, results.poseLandmarks, {
+                  runtime: 'mediapipe',
+                  video: videoEl,
+                  enableLegs: false,
+              })
+            : null;
+
+        const rightHand = results.rightHandLandmarks
+            ? KHand.solve(results.rightHandLandmarks, 'Right')
+            : null;
+
+        const leftHand = results.leftHandLandmarks
+            ? KHand.solve(results.leftHandLandmarks, 'Left')
+            : null;
+
+        /* Send to server → relayed to avatar overlay */
+        socket.emit('avatar_rig_data', { face, pose, rightHand, leftHand });
+
+        /* Update stats */
+        frameCount++;
+        const now = performance.now();
+        if (now - lastFpsTime >= 1000) {
+            statFps.textContent = frameCount;
+            frameCount = 0;
+            lastFpsTime = now;
+        }
+        statFace.textContent  = face  ? 'YES' : 'NO';
+        statPose.textContent  = pose  ? 'YES' : 'NO';
+        statHands.textContent = (rightHand || leftHand) ? 'YES' : 'NO';
+    }
+
+    /* ── Start tracking ────────────────────── */
+    async function startTracking() {
+        if (running) return;
+
+        btnStart.disabled = true;
+        setStatus('loading', 'Requesting webcam access...');
+
+        try {
+            /* Request webcam */
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' },
+                audio: false,
+            });
+            videoEl.srcObject = stream;
+            await videoEl.play();
+
+            setStatus('loading', 'Loading MediaPipe Holistic models...');
+
+            /* Init MediaPipe */
+            holistic = new Holistic({
+                locateFile: (file) =>
+                    `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`,
+            });
+
+            holistic.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                refineFaceLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5,
+            });
+
+            holistic.onResults(onHolisticResults);
+
+            /* Start camera loop */
+            mpCamera = new Camera(videoEl, {
+                onFrame: async () => {
+                    if (running && videoEl.videoWidth > 0) {
+                        await holistic.send({ image: videoEl });
+                    }
+                },
+                width: 640,
+                height: 480,
+            });
+
+            await mpCamera.start();
+
+            running = true;
+            btnStart.disabled = true;
+            btnStop.disabled  = false;
+            setStatus('active', 'Tracking active — sending to avatar overlay');
+            console.log('[Tracker] MediaPipe Holistic + Camera started');
+
+        } catch (err) {
+            console.error('[Tracker] Init failed:', err);
+            setStatus('error', `Failed: ${err.message || err}`);
+            btnStart.disabled = false;
+        }
+    }
+
+    /* ── Stop tracking ─────────────────────── */
+    function stopTracking() {
+        running = false;
+
+        if (mpCamera) {
+            mpCamera.stop();
+            mpCamera = null;
+        }
+        if (videoEl.srcObject) {
+            videoEl.srcObject.getTracks().forEach(t => t.stop());
+            videoEl.srcObject = null;
+        }
+
+        holistic = null;
+        btnStart.disabled = false;
+        btnStop.disabled  = true;
+        setStatus('', 'Tracking stopped');
+        statFps.textContent   = '--';
+        statFace.textContent  = '--';
+        statPose.textContent  = '--';
+        statHands.textContent = '--';
+        console.log('[Tracker] Stopped');
+    }
+
+    /* Auto-start on page load */
+    window.addEventListener('DOMContentLoaded', () => {
+        setStatus('loading', 'Ready — click Start Tracking');
+    });
+</script>
+</body>
+</html>

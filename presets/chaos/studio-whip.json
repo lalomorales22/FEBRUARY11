@@ -1,0 +1,50 @@
+{
+  "id": "studio-whip",
+  "name": "Studio Whip",
+  "description": "Frame-aware transition setup with batch requests and a hard cut to a hype scene.",
+  "cooldownMs": 10000,
+  "tags": [
+    "transition",
+    "scene",
+    "batch"
+  ],
+  "steps": [
+    {
+      "type": "serial",
+      "steps": [
+        {
+          "type": "sceneTransition",
+          "transitionName": "Fade",
+          "durationMs": 180
+        },
+        {
+          "type": "batch",
+          "executionType": "serialFrame",
+          "haltOnFailure": true,
+          "calls": [
+            {
+              "requestType": "SetCurrentProgramScene",
+              "requestData": {
+                "sceneName": "Gameplay"
+              }
+            },
+            {
+              "requestType": "SetCurrentSceneTransitionDuration",
+              "requestData": {
+                "transitionDuration": 120
+              }
+            }
+          ]
+        },
+        {
+          "type": "sleep",
+          "ms": 160
+        },
+        {
+          "type": "setProgramScene",
+          "sceneName": "Camera"
+        }
+      ]
+    }
+  ]
+}

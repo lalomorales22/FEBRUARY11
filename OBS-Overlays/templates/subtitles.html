@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Subtitles Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+        --subtitle-font-family: Inter, Segoe UI, sans-serif;
+        --subtitle-font-size: 56px;
+        --subtitle-text-color: #ffffff;
+        --subtitle-bg-rgba: rgba(0, 0, 0, 0.45);
+    }
+
+    body {
+        width: 1920px;
+        height: 1080px;
+        background: transparent;
+        overflow: hidden;
+        font-family: var(--subtitle-font-family);
+    }
+
+    #subtitle-stage {
+        position: fixed;
+        left: 50%;
+        bottom: 70px;
+        transform: translateX(-50%);
+        width: min(1720px, 96vw);
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    #subtitle-box {
+        max-width: 100%;
+        text-align: center;
+        color: var(--subtitle-text-color);
+        font-size: var(--subtitle-font-size);
+        font-weight: 900;
+        line-height: 1.25;
+        letter-spacing: 0.4px;
+        border-radius: 22px;
+        padding: 12px 22px;
+        background: var(--subtitle-bg-rgba);
+        text-shadow:
+            0 2px 10px rgba(0, 0, 0, 0.9),
+            0 0 4px rgba(0, 0, 0, 0.8);
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity 140ms ease, transform 140ms ease;
+        word-wrap: break-word;
+    }
+
+    #subtitle-box.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    #subtitle-box.interim {
+        opacity: 0.82;
+        font-style: italic;
+    }
+
+    #subtitle-hint {
+        position: fixed;
+        right: 14px;
+        bottom: 12px;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        color: rgba(255, 255, 255, 0.58);
+        text-transform: uppercase;
+    }
+</style>
+</head>
+<body>
+<div id="subtitle-stage">
+    <div id="subtitle-box"></div>
+</div>
+<div id="subtitle-hint">Subtitles idle</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const root = document.documentElement;
+    const subtitleBox = document.getElementById('subtitle-box');
+    const subtitleHint = document.getElementById('subtitle-hint');
+
+    let clearTimer = null;
+
+    function clamp(value, low, high) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return low;
+        return Math.max(low, Math.min(high, num));
+    }
+
+    function applySettings(settings) {
+        if (!settings || typeof settings !== 'object') return;
+        const baseColor = typeof settings.background_color === 'string' ? settings.background_color.trim() : '#000000';
+        const opacity = settings.background_opacity !== undefined ? clamp(settings.background_opacity, 0, 1) : 0.45;
+        if (typeof settings.font_family === 'string' && settings.font_family.trim()) {
+            root.style.setProperty('--subtitle-font-family', settings.font_family.trim());
+        }
+        if (settings.font_size_px !== undefined) {
+            const size = clamp(settings.font_size_px, 18, 140);
+            root.style.setProperty('--subtitle-font-size', `${size}px`);
+        }
+        if (typeof settings.text_color === 'string' && settings.text_color.trim()) {
+            root.style.setProperty('--subtitle-text-color', settings.text_color.trim());
+        }
+        root.style.setProperty('--subtitle-bg-rgba', hexToRgba(baseColor, opacity));
+    }
+
+    function hexToRgba(hex, alpha) {
+        const clean = String(hex || '').replace('#', '').trim();
+        if (clean.length !== 3 && clean.length !== 6) {
+            return `rgba(0, 0, 0, ${alpha})`;
+        }
+        const value = clean.length === 3
+            ? clean.split('').map((part) => `${part}${part}`).join('')
+            : clean;
+        const r = parseInt(value.slice(0, 2), 16);
+        const g = parseInt(value.slice(2, 4), 16);
+        const b = parseInt(value.slice(4, 6), 16);
+        if ([r, g, b].some((part) => Number.isNaN(part))) {
+            return `rgba(0, 0, 0, ${alpha})`;
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function hideSubtitle() {
+        subtitleBox.classList.remove('visible');
+        subtitleBox.classList.remove('interim');
+        subtitleHint.textContent = 'Subtitles idle';
+    }
+
+    function showSubtitle(data) {
+        if (!data || typeof data !== 'object') return;
+        const text = typeof data.text === 'string' ? data.text.trim() : '';
+        const isFinal = data.final !== false;
+        if (!text) {
+            hideSubtitle();
+            return;
+        }
+
+        subtitleBox.textContent = text;
+        subtitleBox.classList.add('visible');
+        subtitleBox.classList.toggle('interim', !isFinal);
+        subtitleHint.textContent = isFinal ? 'Subtitles live' : 'Listening...';
+
+        if (clearTimer) clearTimeout(clearTimer);
+        if (isFinal) {
+            clearTimer = setTimeout(() => {
+                hideSubtitle();
+            }, 3600);
+        }
+    }
+
+    socket.on('subtitle_settings', (data) => {
+        applySettings(data);
+    });
+
+    socket.on('subtitle_update', (data) => {
+        showSubtitle(data);
+    });
+
+    fetch('/api/subtitles/settings')
+        .then((res) => res.json())
+        .then((settings) => applySettings(settings))
+        .catch(() => {});
+
+    fetch('/api/subtitles/state')
+        .then((res) => res.json())
+        .then((state) => showSubtitle(state))
+        .catch(() => {});
+</script>
+</body>
+</html>

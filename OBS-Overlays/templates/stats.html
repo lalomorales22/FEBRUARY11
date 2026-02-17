@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stats Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: {{ config.THEME.font }};
+    }
+
+    /* === STATS BAR === */
+    #stats-bar {
+        display: flex;
+        gap: 16px;
+        padding: 10px 16px;
+        background: {{ config.THEME.chat_bg }};
+        border-radius: 12px;
+        border: 1px solid rgba(145, 71, 255, 0.3);
+        display: inline-flex;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: {{ config.THEME.text }};
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .stat-icon {
+        font-size: 16px;
+    }
+
+    .stat-label {
+        color: rgba(255,255,255,0.5);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .stat-value {
+        color: {{ config.THEME.secondary }};
+        font-weight: 900;
+        font-size: 18px;
+        min-width: 20px;
+        text-align: center;
+    }
+
+    .stat-divider {
+        width: 1px;
+        background: rgba(255,255,255,0.15);
+        align-self: stretch;
+    }
+
+    /* Pulse animation when value changes */
+    .stat-value.pulse {
+        animation: pulse 0.5s ease;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.3); color: #fff; }
+        100% { transform: scale(1); }
+    }
+
+    /* Uptime ticker */
+    #uptime {
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+</head>
+<body>
+
+<div id="stats-bar">
+    <div class="stat-item">
+        <span class="stat-icon">👁</span>
+        <div>
+            <div class="stat-label">Viewers</div>
+            <div class="stat-value" id="viewers">0</div>
+        </div>
+    </div>
+
+    <div class="stat-divider"></div>
+
+    <div class="stat-item">
+        <span class="stat-icon">💜</span>
+        <div>
+            <div class="stat-label">Followers</div>
+            <div class="stat-value" id="followers">0</div>
+        </div>
+    </div>
+
+    <div class="stat-divider"></div>
+
+    <div class="stat-item">
+        <span class="stat-icon">⭐</span>
+        <div>
+            <div class="stat-label">Subs</div>
+            <div class="stat-value" id="subs">0</div>
+        </div>
+    </div>
+
+    <div class="stat-divider"></div>
+
+    <div class="stat-item">
+        <span class="stat-icon">💬</span>
+        <div>
+            <div class="stat-label">Messages</div>
+            <div class="stat-value" id="messages">0</div>
+        </div>
+    </div>
+
+    <div class="stat-divider"></div>
+
+    <div class="stat-item">
+        <span class="stat-icon">⏱</span>
+        <div>
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value" id="uptime">0:00:00</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    let streamStart = null;
+
+    // Request current stats on load
+    socket.emit('request_stats');
+
+    socket.on('stats_update', (data) => {
+        updateStat('viewers', data.viewers || 0);
+        updateStat('followers', data.followers_this_stream || 0);
+        updateStat('subs', data.subs_this_stream || 0);
+        updateStat('messages', data.total_messages || 0);
+
+        if (data.stream_start) {
+            streamStart = new Date(data.stream_start);
+        }
+    });
+
+    socket.on('viewer_update', (data) => {
+        updateStat('viewers', data.viewers || 0);
+    });
+
+    function updateStat(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const oldVal = el.textContent;
+        const newVal = String(value);
+        if (oldVal !== newVal) {
+            el.textContent = newVal;
+            el.classList.add('pulse');
+            setTimeout(() => el.classList.remove('pulse'), 500);
+        }
+    }
+
+    // Uptime ticker
+    setInterval(() => {
+        if (!streamStart) return;
+        const now = new Date();
+        const diff = Math.floor((now - streamStart) / 1000);
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        document.getElementById('uptime').textContent =
+            `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+</script>
+</body>
+</html>

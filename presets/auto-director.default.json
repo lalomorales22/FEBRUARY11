@@ -1,0 +1,40 @@
+{
+  "enabled": false,
+  "switchCooldownMs": 1600,
+  "hysteresisDb": 3,
+  "defaultHoldMs": 500,
+  "rules": [
+    {
+      "id": "mic_primary_camera",
+      "inputName": "Mic/Aux",
+      "sceneName": "Camera",
+      "activationDb": -55,
+      "priority": 130,
+      "holdMs": 180
+    },
+    {
+      "id": "gameplay_audio_wide",
+      "inputName": "inputname",
+      "sceneName": "Gameplay",
+      "activationDb": -55,
+      "priority": 90,
+      "holdMs": 260
+    },
+    {
+      "id": "discord_reaction_camera",
+      "inputName": "discord",
+      "sceneName": "Camera React",
+      "activationDb": -55,
+      "priority": 120,
+      "holdMs": 220
+    },
+    {
+      "id": "discord_reaction_camera_caps",
+      "inputName": "Discord",
+      "sceneName": "Camera React",
+      "activationDb": -55,
+      "priority": 120,
+      "holdMs": 220
+    }
+  ]
+}

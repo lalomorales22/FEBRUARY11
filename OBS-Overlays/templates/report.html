@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post-Stream Report</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #0e0e10;
+        color: #efeff1;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        padding: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 6px;
+    }
+
+    .report-meta {
+        color: #adadb8;
+        font-size: 13px;
+        margin-bottom: 24px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #18181b;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid rgba(255,255,255,0.06);
+        text-align: center;
+    }
+
+    .stat-card .icon { font-size: 32px; margin-bottom: 8px; }
+    .stat-card .value {
+        font-size: 36px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .stat-card .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #adadb8;
+        margin-top: 4px;
+    }
+
+    .section {
+        background: #18181b;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .section h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #efeff1;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #adadb8;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    td {
+        padding: 8px 12px;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .rank { color: #9147ff; font-weight: 700; width: 30px; }
+    .bar-track {
+        height: 8px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 4px;
+        overflow: hidden;
+        min-width: 80px;
+    }
+    .bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #9147ff, #00f0ff);
+    }
+
+    .timeline-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 100px;
+        padding-top: 10px;
+    }
+
+    .timeline-bar {
+        flex: 1;
+        min-width: 4px;
+        background: linear-gradient(180deg, #9147ff, #00f0ff);
+        border-radius: 2px 2px 0 0;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .timeline-bar:hover::after {
+        content: attr(data-label);
+        position: absolute;
+        bottom: 105%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #000;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        white-space: nowrap;
+        z-index: 10;
+    }
+
+    .event-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin: 2px 4px;
+        background: rgba(145,71,255,0.2);
+        color: #bf94ff;
+    }
+
+    .goal-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .goal-item:last-child { border-bottom: none; }
+
+    #loading {
+        text-align: center;
+        padding: 60px;
+        font-size: 18px;
+        color: #adadb8;
+    }
+
+    .print-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #9147ff;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        z-index: 100;
+    }
+    .print-btn:hover { background: #772ce8; }
+
+    @media print {
+        .print-btn { display: none; }
+        body { background: #fff; color: #000; }
+        .stat-card, .section { border: 1px solid #ddd; }
+    }
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨 Print Report</button>
+<div id="loading">Loading report data...</div>
+<div id="report" style="display:none;"></div>
+
+<script>
+    fetch('/api/report')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            const el = document.getElementById('report');
+            el.style.display = '';
+            el.innerHTML = buildReport(data);
+        })
+        .catch(err => {
+            document.getElementById('loading').innerHTML = `<span style="color:#e91916;">Error loading report: ${err.message}</span>`;
+        });
+
+    function buildReport(d) {
+        const s = d.stats || {};
+        const maxChat = d.top_chatters.length > 0 ? d.top_chatters[0].messages : 1;
+        const maxTimeline = d.timeline.length > 0 ? Math.max(...d.timeline.map(t => t.events)) : 1;
+
+        let html = `
+            <h1>📊 Post-Stream Report</h1>
+            <div class="report-meta">
+                Session started: ${esc(d.since)} &nbsp;|&nbsp; Duration: ${esc(d.duration || 'N/A')} &nbsp;|&nbsp; Total events: ${d.total_events}
+            </div>
+
+            <div class="grid">
+                <div class="stat-card"><div class="icon">👥</div><div class="value">${s.peak_viewers || 0}</div><div class="label">Peak Viewers</div></div>
+                <div class="stat-card"><div class="icon">💜</div><div class="value">${s.followers || 0}</div><div class="label">New Followers</div></div>
+                <div class="stat-card"><div class="icon">⭐</div><div class="value">${s.subs || 0}</div><div class="label">New Subs</div></div>
+                <div class="stat-card"><div class="icon">💬</div><div class="value">${s.total_messages || 0}</div><div class="label">Chat Messages</div></div>
+                <div class="stat-card"><div class="icon">⚔️</div><div class="value">${s.raids || 0}</div><div class="label">Raids</div></div>
+                <div class="stat-card"><div class="icon">📡</div><div class="value">${d.total_events}</div><div class="label">Total Events</div></div>
+            </div>
+        `;
+
+        // Timeline
+        if (d.timeline.length > 0) {
+            html += `<div class="section"><h2>📈 Event Timeline (5-min buckets)</h2><div class="timeline-chart">`;
+            d.timeline.forEach(t => {
+                const pct = Math.max(3, (t.events / maxTimeline) * 100);
+                html += `<div class="timeline-bar" style="height:${pct}%;" data-label="${t.time}: ${t.events} events"></div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // Event breakdown
+        if (Object.keys(d.event_counts).length > 0) {
+            html += `<div class="section"><h2>🏷 Event Breakdown</h2><div>`;
+            Object.entries(d.event_counts).forEach(([type, count]) => {
+                html += `<span class="event-badge">${esc(type)}: ${count}</span>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // Top Chatters
+        if (d.top_chatters.length > 0) {
+            html += `<div class="section"><h2>🏆 Top Chatters</h2><table><thead><tr><th>#</th><th>Username</th><th>Messages</th><th></th></tr></thead><tbody>`;
+            d.top_chatters.forEach((c, i) => {
+                const pct = (c.messages / maxChat) * 100;
+                html += `<tr>
+                    <td class="rank">${i + 1}</td>
+                    <td>${esc(c.username)}</td>
+                    <td>${c.messages}</td>
+                    <td><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div></td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        // New Followers
+        if (d.new_followers.length > 0) {
+            html += `<div class="section"><h2>💜 New Followers (${d.new_followers.length})</h2><div>`;
+            d.new_followers.forEach(f => {
+                html += `<span class="event-badge">${esc(f.username)}</span>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // Sounds Played
+        if (d.sounds_played.length > 0) {
+            html += `<div class="section"><h2>🔊 Sounds Played</h2><table><thead><tr><th>Sound</th><th>Times</th></tr></thead><tbody>`;
+            d.sounds_played.forEach(s => {
+                html += `<tr><td>${esc(s.sound)}</td><td>${s.count}</td></tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        // Chaos Triggered
+        if (d.chaos_triggered.length > 0) {
+            html += `<div class="section"><h2>💥 Chaos Effects Triggered</h2><table><thead><tr><th>Preset</th><th>Times</th></tr></thead><tbody>`;
+            d.chaos_triggered.forEach(c => {
+                html += `<tr><td>${esc(c.preset)}</td><td>${c.count}</td></tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        // Goals
+        if (d.goals && d.goals.length > 0) {
+            const goalColors = { followers: '#9147ff', subs: '#ffcc00', donations: '#00e676', bits: '#00e5ff' };
+            const goalIcons = { followers: '💜', subs: '⭐', donations: '💚', bits: '💎' };
+            html += `<div class="section"><h2>🎯 Goal Progress</h2>`;
+            d.goals.forEach(g => {
+                const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100) : 0;
+                const color = goalColors[g.type] || '#9147ff';
+                const icon = goalIcons[g.type] || '🎯';
+                const status = pct >= 100 ? '✅ Complete!' : `${Math.round(pct)}%`;
+                html += `<div class="goal-item">
+                    <span style="font-size:20px;">${icon}</span>
+                    <span style="flex:1;">${esc(g.title)}: ${g.current} / ${g.target}</span>
+                    <div class="bar-track" style="width:120px;"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+                    <span style="font-size:12px; color:${color}; font-weight:700;">${status}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+
+        return html;
+    }
+
+    function esc(text) {
+        const d = document.createElement('div');
+        d.textContent = String(text);
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Config Editor</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #0e0e10;
+        color: #efeff1;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        padding: 24px;
+    }
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    h1 {
+        font-size: 24px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .save-btn {
+        background: #9147ff;
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .save-btn:hover { background: #772ce8; }
+    .save-btn:disabled { background: #555; cursor: default; }
+
+    .notice {
+        background: rgba(145,71,255,0.15);
+        border: 1px solid rgba(145,71,255,0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #bf94ff;
+        margin-bottom: 20px;
+    }
+
+    .group {
+        background: #18181b;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .group h2 {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #9147ff;
+        margin-bottom: 16px;
+    }
+
+    .field {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+        width: 180px;
+        font-size: 13px;
+        color: #adadb8;
+        flex-shrink: 0;
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field input[type="color"] {
+        flex: 1;
+        background: #0e0e10;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 6px;
+        padding: 8px 12px;
+        color: #efeff1;
+        font-family: 'Inter', monospace;
+        font-size: 13px;
+    }
+
+    .field input[type="color"] {
+        width: 50px;
+        height: 36px;
+        padding: 2px;
+        cursor: pointer;
+    }
+
+    .field input:focus {
+        outline: none;
+        border-color: #9147ff;
+    }
+
+    .toggle {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider {
+        position: absolute;
+        inset: 0;
+        background: #555;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .toggle .slider::after {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        background: #fff;
+        border-radius: 50%;
+        top: 3px;
+        left: 3px;
+        transition: transform 0.3s;
+    }
+    .toggle input:checked + .slider { background: #9147ff; }
+    .toggle input:checked + .slider::after { transform: translateX(20px); }
+
+    .secret-toggle {
+        font-size: 11px;
+        color: #adadb8;
+        cursor: pointer;
+        user-select: none;
+    }
+    .secret-toggle:hover { color: #9147ff; }
+
+    #save-status {
+        font-size: 13px;
+        margin-left: 12px;
+        transition: opacity 0.3s;
+    }
+
+    a { color: #9147ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>⚙️ Config Editor</h1>
+    <div>
+        <button class="save-btn" onclick="saveConfig()">💾 Save to .env</button>
+        <span id="save-status"></span>
+    </div>
+</header>
+
+<div class="notice">
+    Changes are saved to <code>.env</code> file. You'll need to <strong>restart the server</strong> for changes to take effect.
+    <a href="/dashboard" style="margin-left:12px;">← Back to Dashboard</a>
+</div>
+
+<div id="config-fields">Loading...</div>
+
+<script>
+    let configData = [];
+    let revealedSecrets = {};
+
+    function loadConfig() {
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(data => {
+                configData = data.fields || [];
+                renderConfig();
+            })
+            .catch(() => {
+                document.getElementById('config-fields').innerHTML = '<p style="color:#e91916;">Failed to load config</p>';
+            });
+    }
+
+    function renderConfig() {
+        const container = document.getElementById('config-fields');
+        const groups = {};
+        configData.forEach(f => {
+            if (!groups[f.group]) groups[f.group] = [];
+            groups[f.group].push(f);
+        });
+
+        container.innerHTML = '';
+        Object.entries(groups).forEach(([groupName, fields]) => {
+            const div = document.createElement('div');
+            div.className = 'group';
+            div.innerHTML = `<h2>${esc(groupName)}</h2>`;
+
+            fields.forEach(f => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'field';
+
+                const isSecret = f.secret;
+                const revealed = revealedSecrets[f.key];
+                const displayVal = (isSecret && !revealed) ? f.display : f.value;
+
+                if (f.type === 'bool') {
+                    const checked = ['true','1','yes','on','True'].includes(String(f.value));
+                    fieldDiv.innerHTML = `
+                        <label>${esc(f.label)}</label>
+                        <div class="toggle">
+                            <input type="checkbox" id="cfg-${f.key}" ${checked ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </div>
+                    `;
+                } else if (f.type === 'color') {
+                    fieldDiv.innerHTML = `
+                        <label>${esc(f.label)}</label>
+                        <input type="color" id="cfg-${f.key}" value="${esc(f.value || '#ffffff')}">
+                        <input type="text" id="cfg-${f.key}-text" value="${esc(f.value || '#ffffff')}" style="width:100px;"
+                               oninput="document.getElementById('cfg-${f.key}').value = this.value;">
+                    `;
+                } else {
+                    fieldDiv.innerHTML = `
+                        <label>${esc(f.label)}</label>
+                        <input type="${f.type === 'number' ? 'number' : 'text'}" id="cfg-${f.key}" value="${esc(displayVal)}">
+                        ${isSecret ? `<span class="secret-toggle" onclick="toggleSecret('${f.key}')">${revealed ? '🙈 Hide' : '👁 Show'}</span>` : ''}
+                    `;
+                }
+
+                div.appendChild(fieldDiv);
+            });
+
+            container.appendChild(div);
+        });
+    }
+
+    function toggleSecret(key) {
+        revealedSecrets[key] = !revealedSecrets[key];
+        renderConfig();
+    }
+
+    function saveConfig() {
+        const values = {};
+        configData.forEach(f => {
+            const el = document.getElementById(`cfg-${f.key}`);
+            if (!el) return;
+            if (f.type === 'bool') {
+                values[f.key] = el.checked ? 'true' : 'false';
+            } else if (f.type === 'color') {
+                values[f.key] = el.value;
+            } else {
+                // Don't save masked values
+                if (f.secret && el.value.includes('•')) return;
+                values[f.key] = el.value;
+            }
+        });
+
+        const status = document.getElementById('save-status');
+        status.textContent = 'Saving...';
+        status.style.color = '#adadb8';
+
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                status.textContent = '✅ ' + data.message;
+                status.style.color = '#00e676';
+            } else {
+                status.textContent = '❌ ' + (data.message || 'Error');
+                status.style.color = '#e91916';
+            }
+            setTimeout(() => { status.textContent = ''; }, 5000);
+        })
+        .catch(err => {
+            status.textContent = '❌ Failed';
+            status.style.color = '#e91916';
+        });
+    }
+
+    function esc(text) {
+        const d = document.createElement('div');
+        d.textContent = String(text);
+        return d.innerHTML;
+    }
+
+    loadConfig();
+</script>
+</body>
+</html>

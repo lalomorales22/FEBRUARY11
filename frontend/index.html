@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FEBRUARY11 | Mission Control</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="kicker">OBS WEBSOCKET COMMAND SUITE</p>
+          <h1>FEBRUARY11 Mission Control</h1>
+          <p class="subtitle">
+            Dark operator surface for chaos automation, replay direction, and vendor plugin control.
+          </p>
+        </div>
+        <div class="hero-controls">
+          <button id="hero-open-overlay-dashboard" type="button">Overlay Dashboard</button>
+          <div class="phase-pill" id="connection-pill">PHASE: idle</div>
+        </div>
+      </header>
+
+      <section class="quickbar">
+        <button id="qa-replay" type="button">Capture Replay</button>
+        <button id="qa-kill-toggle" type="button" class="danger">Toggle Kill Switch</button>
+        <button id="qa-auto-toggle" type="button">Toggle Auto Director</button>
+        <button id="qa-chaos-first" type="button">Run First Chaos Preset</button>
+        <button id="qa-collapse-all" type="button">Compact View</button>
+        <button id="qa-expand-all" type="button">Full View</button>
+        <p class="hint">
+          Shortcuts: <code>Ctrl+Shift+R</code> replay, <code>Ctrl+Shift+K</code> kill switch, <code>Ctrl+Shift+A</code> auto director.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel wide">
+          <h2>Live Operations</h2>
+          <div class="ops-grid">
+            <article class="panel panel-sub">
+              <h2>Connection</h2>
+              <dl class="stats">
+                <div><dt>OBS Phase</dt><dd id="obs-phase">idle</dd></div>
+                <div><dt>Reconnect Attempt</dt><dd id="obs-attempt">0</dd></div>
+                <div><dt>Next Retry</dt><dd id="obs-next-retry">-</dd></div>
+                <div><dt>Last Error</dt><dd id="obs-last-error">-</dd></div>
+              </dl>
+              <div class="actions">
+                <button id="btn-connect" type="button">Connect</button>
+                <button id="btn-reconnect" type="button">Force Reconnect</button>
+                <button id="btn-disconnect" type="button" class="danger">Disconnect</button>
+              </div>
+            </article>
+
+            <article class="panel panel-sub">
+              <h2>Safety Controls</h2>
+              <dl class="stats">
+                <div><dt>Kill Switch</dt><dd id="safety-kill-switch">false</dd></div>
+                <div><dt>Fallback Scene</dt><dd id="safety-fallback-scene">-</dd></div>
+                <div><dt>Action Budget</dt><dd id="safety-budget">-</dd></div>
+                <div><dt>Last Block</dt><dd id="safety-last-block">-</dd></div>
+              </dl>
+              <div class="actions">
+                <button id="btn-kill-on" type="button" class="danger">Enable Kill Switch</button>
+                <button id="btn-kill-off" type="button">Disable Kill Switch</button>
+                <button id="btn-fallback" type="button">Trigger Fallback Scene</button>
+              </div>
+            </article>
+
+            <article class="panel panel-sub">
+              <h2>Auto Director</h2>
+              <dl class="stats">
+                <div><dt>Enabled</dt><dd id="auto-enabled">false</dd></div>
+                <div><dt>Active Rule</dt><dd id="auto-active-rule">-</dd></div>
+                <div><dt>Pending Rule</dt><dd id="auto-pending-rule">-</dd></div>
+                <div><dt>Last Decision</dt><dd id="auto-last-decision">-</dd></div>
+                <div><dt>Switch Cooldown</dt><dd id="auto-switch-cooldown">-</dd></div>
+                <div><dt>Top Input Levels</dt><dd id="auto-top-levels">-</dd></div>
+              </dl>
+              <div class="actions">
+                <button id="btn-auto-enable" type="button">Enable Auto</button>
+                <button id="btn-auto-disable" type="button" class="danger">Disable Auto</button>
+                <button id="btn-auto-reload" type="button">Reload Rules</button>
+              </div>
+            </article>
+
+            <article class="panel panel-sub">
+              <h2>Replay Director</h2>
+              <dl class="stats">
+                <div><dt>Buffer Active</dt><dd id="replay-buffer-active">false</dd></div>
+                <div><dt>Last Capture</dt><dd id="replay-last-capture">-</dd></div>
+                <div><dt>Last Label</dt><dd id="replay-last-label">-</dd></div>
+                <div><dt>Last Replay Path</dt><dd id="replay-last-path">-</dd></div>
+                <div><dt>Playback Triggered</dt><dd id="replay-playback">false</dd></div>
+                <div><dt>Overlay Visible</dt><dd id="replay-overlay">false</dd></div>
+                <div><dt>Chapter Created</dt><dd id="replay-chapter">false</dd></div>
+                <div><dt>Last Error</dt><dd id="replay-error">-</dd></div>
+              </dl>
+              <div class="form-row">
+                <input id="replay-label" type="text" placeholder="Replay label (optional)" maxlength="64" />
+              </div>
+              <div class="actions">
+                <button id="btn-replay-capture" type="button">Capture Replay</button>
+                <button id="btn-replay-hide-overlay" type="button">Hide Overlay</button>
+              </div>
+            </article>
+
+            <article class="panel panel-sub">
+              <h2>Live Output</h2>
+              <dl class="stats">
+                <div><dt>Program Scene</dt><dd id="program-scene">-</dd></div>
+                <div><dt>Stream Active</dt><dd id="stream-active">false</dd></div>
+                <div><dt>Stream Timecode</dt><dd id="stream-timecode">-</dd></div>
+                <div><dt>Recording Active</dt><dd id="record-active">false</dd></div>
+                <div><dt>Recording Paused</dt><dd id="record-paused">false</dd></div>
+                <div><dt>Recording Timecode</dt><dd id="record-timecode">-</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel panel-sub">
+              <h2>Performance</h2>
+              <dl class="stats">
+                <div><dt>CPU Usage</dt><dd id="cpu-usage">-</dd></div>
+                <div><dt>Memory Usage</dt><dd id="memory-usage">-</dd></div>
+                <div><dt>Active FPS</dt><dd id="active-fps">-</dd></div>
+                <div><dt>Avg Frame Time</dt><dd id="avg-frame-time">-</dd></div>
+                <div><dt>Render Frames</dt><dd id="render-frames">-</dd></div>
+                <div><dt>Output Frames</dt><dd id="output-frames">-</dd></div>
+              </dl>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel wide">
+          <h2>Chaos Presets</h2>
+          <dl class="stats two-col">
+            <div><dt>Loaded Presets</dt><dd id="chaos-total-presets">0</dd></div>
+            <div><dt>Running Preset</dt><dd id="chaos-running-preset">-</dd></div>
+            <div><dt>Last Run</dt><dd id="chaos-last-run">-</dd></div>
+            <div><dt>Last Error</dt><dd id="chaos-last-error">-</dd></div>
+          </dl>
+          <div class="actions">
+            <button id="btn-chaos-reload" type="button">Reload Presets</button>
+          </div>
+          <div class="chaos-list" id="chaos-preset-list"></div>
+        </article>
+
+        <article class="panel wide">
+          <h2>Plugin Bridge</h2>
+          <dl class="stats two-col">
+            <div><dt>Default Policy</dt><dd id="plugin-default-policy">deny</dd></div>
+            <div><dt>Registered Vendors</dt><dd id="plugin-vendor-count">0</dd></div>
+            <div><dt>Last Call Vendor</dt><dd id="plugin-last-call-vendor">-</dd></div>
+            <div><dt>Last Call Time</dt><dd id="plugin-last-call-time">-</dd></div>
+            <div><dt>Recent Vendor Events</dt><dd id="plugin-recent-event-count">0</dd></div>
+            <div><dt>Last Error</dt><dd id="plugin-last-error">-</dd></div>
+          </dl>
+          <div class="form-grid">
+            <input id="plugin-vendor" type="text" placeholder="vendorName (e.g. obs-browser)" />
+            <input id="plugin-request" type="text" placeholder="requestType" />
+            <input id="plugin-role" type="text" value="operator" placeholder="role" />
+          </div>
+          <div class="form-row">
+            <textarea id="plugin-data" rows="3" placeholder='requestData JSON (optional), e.g. {"foo":"bar"}'></textarea>
+          </div>
+          <div class="actions">
+            <button id="btn-plugin-call" type="button">Call Vendor Request</button>
+            <button id="btn-plugin-reload" type="button">Reload Permissions</button>
+          </div>
+          <div class="plugin-list" id="plugin-vendor-list"></div>
+        </article>
+
+        <article class="panel wide">
+          <h2>OBS Overlays Bridge</h2>
+          <dl class="stats two-col">
+            <div><dt>Enabled</dt><dd id="overlay-enabled">false</dd></div>
+            <div><dt>Reachable</dt><dd id="overlay-reachable">false</dd></div>
+            <div><dt>Base URL</dt><dd id="overlay-base-url">-</dd></div>
+            <div><dt>Last Checked</dt><dd id="overlay-last-checked">-</dd></div>
+            <div><dt>Last Error</dt><dd id="overlay-last-error">-</dd></div>
+          </dl>
+
+          <div class="form-grid">
+            <input id="overlay-alert-type" type="text" value="follow" placeholder="alert type (follow/sub/raid)" />
+            <input id="overlay-alert-user" type="text" value="TestViewer" placeholder="alert username" />
+            <input id="overlay-chat-message" type="text" value="Overlay chat test from FEBRUARY11" placeholder="chat message" />
+            <input id="overlay-scene-name" type="text" placeholder="scene name for overlays app" />
+          </div>
+
+          <div class="form-grid">
+            <input id="overlay-subtitle-font" type="text" value="Inter, Segoe UI, sans-serif" placeholder="subtitle font family" />
+            <input id="overlay-subtitle-size" type="number" min="18" max="140" step="1" value="56" placeholder="font size px" />
+            <input id="overlay-subtitle-lang" type="text" value="en-US" placeholder="STT language (e.g. en-US)" />
+            <input id="overlay-subtitle-bg-opacity" type="number" min="0" max="1" step="0.05" value="0.45" placeholder="subtitle bg opacity" />
+          </div>
+
+          <div class="form-grid">
+            <input id="overlay-subtitle-text-color" type="color" value="#ffffff" title="Subtitle text color" />
+            <input id="overlay-subtitle-bg-color" type="color" value="#000000" title="Subtitle background color" />
+          </div>
+
+          <div class="actions">
+            <button id="btn-overlay-probe" type="button">Probe Overlay Service</button>
+            <button id="btn-overlay-detect-copy" type="button">Auto-Detect + Copy URLs</button>
+            <button id="btn-overlay-open-dashboard" type="button">Load Overlay Dashboard</button>
+            <button id="btn-overlay-open-scene" type="button">Load Unified Overlay</button>
+            <button id="btn-overlay-open-keyboard" type="button">Load Keyboard Overlay</button>
+            <button id="btn-overlay-open-subtitles" type="button">Load Subtitle Overlay</button>
+            <button id="overlay-open-external" type="button">Open Current in New Tab</button>
+            <button id="btn-overlay-test-alert" type="button">Send Test Alert</button>
+            <button id="btn-overlay-test-chat" type="button">Send Test Chat</button>
+            <button id="btn-overlay-start-stream" type="button">Start Overlay Stream Timer</button>
+            <button id="btn-overlay-switch-scene" type="button">Switch Scene (Overlay App)</button>
+            <button id="btn-overlay-subtitle-style" type="button">Apply Subtitle Style</button>
+            <button id="btn-overlay-stt-start" type="button">Start STT Capture</button>
+            <button id="btn-overlay-stt-stop" type="button">Stop STT Capture</button>
+            <button id="btn-overlay-subtitle-clear" type="button">Clear Subtitles</button>
+          </div>
+
+          <div class="plugin-list" id="overlay-links-list"></div>
+          <div class="overlay-embed" id="overlay-embed">
+            <p class="kicker">EMBEDDED OVERLAY APP</p>
+            <h3 id="overlay-title">Overlay Dashboard</h3>
+            <p class="overlay-url" id="overlay-url">-</p>
+            <div class="overlay-frame-wrap" id="overlay-frame-wrap">
+              <iframe id="overlay-frame" title="OBS Overlays Embedded View" loading="lazy" scrolling="no"></iframe>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel wide">
+          <h2>Copilot Lab (Phase A)</h2>
+          <p class="panel-note">
+            Guided onboarding plus action-plan assistant. Plans are previewed before execution.
+          </p>
+          <div class="assistant-grid">
+            <section class="assistant-block">
+              <h3>Onboarding Wizard</h3>
+              <dl class="stats two-col">
+                <div><dt>OBS Connected</dt><dd id="onboarding-obs-connected">false</dd></div>
+                <div><dt>Has Scan</dt><dd id="onboarding-has-scan">false</dd></div>
+                <div><dt>Has Generated</dt><dd id="onboarding-has-generated">false</dd></div>
+                <div><dt>Has Verified</dt><dd id="onboarding-has-verified">false</dd></div>
+                <div><dt>Scenes</dt><dd id="onboarding-scene-count">0</dd></div>
+                <div><dt>Inputs</dt><dd id="onboarding-input-count">0</dd></div>
+                <div><dt>Program Scene</dt><dd id="onboarding-program-scene">-</dd></div>
+                <div><dt>Generated Files</dt><dd id="onboarding-generated-files">0</dd></div>
+                <div><dt>Verification</dt><dd id="onboarding-verification">-</dd></div>
+                <div><dt>Last Error</dt><dd id="onboarding-last-error">-</dd></div>
+              </dl>
+              <div class="form-grid">
+                <input id="onboarding-stream-type" type="text" value="gaming" placeholder="stream type" />
+                <input id="onboarding-primary-mic" type="text" placeholder="primary mic input name" />
+                <input id="onboarding-gameplay-scene" type="text" placeholder="gameplay scene name" />
+                <input id="onboarding-camera-scene" type="text" placeholder="camera scene name" />
+                <input id="onboarding-overlay-style" type="text" value="clean-dark" placeholder="overlay style" />
+              </div>
+              <div class="actions">
+                <button id="btn-onboarding-scan" type="button">1) Scan OBS</button>
+                <button id="btn-onboarding-generate" type="button">2) Generate Starter Files</button>
+                <button id="btn-onboarding-verify" type="button">3) Verify Setup</button>
+              </div>
+              <div class="plugin-list" id="onboarding-checklist"></div>
+            </section>
+
+            <section class="assistant-block">
+              <h3>Assistant Planner</h3>
+              <div class="chip-row" id="assistant-suggestions"></div>
+              <div class="form-row">
+                <textarea
+                  id="assistant-prompt"
+                  rows="3"
+                  placeholder='Describe what you want, e.g. "Reconnect OBS then enable auto director and reload rules."'
+                ></textarea>
+              </div>
+              <div class="actions">
+                <button id="btn-assistant-chat" type="button">Chat + Plan</button>
+                <button id="btn-assistant-plan" type="button">Generate Plan Only</button>
+                <button id="btn-assistant-execute" type="button">Execute Current Plan</button>
+              </div>
+              <dl class="stats">
+                <div><dt>Plan Summary</dt><dd id="assistant-plan-summary">-</dd></div>
+                <div><dt>Risk</dt><dd id="assistant-plan-risk">-</dd></div>
+                <div><dt>Status</dt><dd id="assistant-plan-status">-</dd></div>
+                <div><dt>Assistant Reply</dt><dd id="assistant-response">-</dd></div>
+              </dl>
+              <div class="plugin-list" id="assistant-plan-steps"></div>
+            </section>
+          </div>
+        </article>
+
+        <article class="panel wide">
+          <h2>Service Health</h2>
+          <dl class="stats two-col">
+            <div><dt>Service</dt><dd id="health-service">FEBRUARY11</dd></div>
+            <div><dt>Status</dt><dd id="health-status">ok</dd></div>
+            <div><dt>Uptime (sec)</dt><dd id="health-uptime">0</dd></div>
+            <div><dt>Server Time</dt><dd id="health-now">-</dd></div>
+            <div><dt>Dashboard Socket</dt><dd id="ws-state">connecting</dd></div>
+            <div><dt>Last Snapshot</dt><dd id="last-updated">-</dd></div>
+          </dl>
+          <div class="logline" id="logline">Booting control surface...</div>
+        </article>
+      </section>
+    </main>
+
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

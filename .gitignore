@@ -1,0 +1,37 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+OBS-Overlays/venv/
+venv/
+
+# SQLite database (contains your stream data / chat logs)
+*.db
+*.db-journal
+
+# VRM avatar models (large binary + personal)
+OBS-Overlays/static/VRMs/*.vrm
+
+# Sound files (potentially copyrighted audio)
+OBS-Overlays/static/sounds/*.mp3
+OBS-Overlays/static/sounds/*.wav
+OBS-Overlays/static/sounds/*.ogg
+OBS-Overlays/static/sounds/soundboard/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db

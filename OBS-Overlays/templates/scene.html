@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stream Scene - 1920x1080</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 1920px;
+        height: 1080px;
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        position: relative;
+    }
+
+    /* ═══════════════════════════════════════════
+       TOP BAR - Stats + Branding
+       ═══════════════════════════════════════════ */
+    #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        z-index: 10;
+    }
+
+    #channel-name {
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    #stats-row {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+    }
+
+    .stat {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.8);
+    }
+
+    .stat-icon { font-size: 14px; }
+
+    .stat-val {
+        font-weight: 900;
+        color: #00f0ff;
+        font-size: 15px;
+        min-width: 16px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .stat-val.pulse {
+        animation: valPulse 0.4s ease;
+    }
+
+    @keyframes valPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.4); color: #fff; }
+        100% { transform: scale(1); }
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 18px;
+        background: rgba(255,255,255,0.15);
+    }
+
+    /* ═══════════════════════════════════════════
+       CHAT PANEL - Right Side
+       ═══════════════════════════════════════════ */
+    #chat-panel {
+        position: absolute;
+        right: 20px;
+        bottom: 80px;
+        width: 380px;
+        max-height: 500px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        overflow: hidden;
+        /* Fade out at the top */
+        mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+    }
+
+    .chat-msg {
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 8px;
+        padding: 7px 12px;
+        margin-bottom: 4px;
+        border-left: 3px solid var(--user-color, #9147ff);
+        opacity: 0;
+        transform: translateX(20px);
+        animation: chatIn 0.3s ease forwards;
+        word-wrap: break-word;
+    }
+
+    .chat-msg.exit {
+        animation: chatOut 0.3s ease forwards;
+    }
+
+    @keyframes chatIn {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes chatOut {
+        from { opacity: 1; }
+        to { opacity: 0; transform: translateX(20px); }
+    }
+
+    .chat-badges { display: inline; margin-right: 3px; }
+
+    .badge {
+        display: inline-block;
+        font-size: 9px;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+    .badge.mod { background: #00ad03; color: #fff; }
+    .badge.sub { background: #9147ff; color: #fff; }
+
+    .chat-user {
+        font-weight: 700;
+        color: var(--user-color, #9147ff);
+        font-size: 13px;
+        margin-right: 5px;
+    }
+
+    .chat-text {
+        color: #fff;
+        font-size: 13px;
+        line-height: 1.3;
+    }
+
+    /* ═══════════════════════════════════════════
+       ALERT OVERLAY - Center Screen
+       ═══════════════════════════════════════════ */
+    #alert-zone {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 650px;
+        text-align: center;
+        pointer-events: none;
+        z-index: 100;
+    }
+
+    .alert-box {
+        background: rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 2px solid #9147ff;
+        border-radius: 16px;
+        padding: 32px 44px;
+        opacity: 0;
+        transform: scale(0.5) translateY(30px);
+        animation: alertIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        box-shadow:
+            0 0 40px rgba(145, 71, 255, 0.3),
+            0 0 80px rgba(145, 71, 255, 0.15),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .alert-box.exit {
+        animation: alertOut 0.5s ease forwards;
+    }
+
+    @keyframes alertIn {
+        0% { opacity: 0; transform: scale(0.5) translateY(30px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes alertOut {
+        0% { opacity: 1; transform: scale(1) translateY(0); }
+        100% { opacity: 0; transform: scale(0.8) translateY(-40px); }
+    }
+
+    .alert-icon {
+        font-size: 52px;
+        margin-bottom: 8px;
+        animation: iconBounce 0.6s ease infinite alternate;
+    }
+
+    @keyframes iconBounce {
+        from { transform: translateY(0); }
+        to { transform: translateY(-10px); }
+    }
+
+    .alert-type {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        color: #00f0ff;
+        margin-bottom: 8px;
+    }
+
+    .alert-username {
+        font-size: 36px;
+        font-weight: 900;
+        color: #fff;
+        text-shadow: 0 0 30px rgba(145, 71, 255, 0.5);
+    }
+
+    .alert-message {
+        font-size: 15px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 6px;
+    }
+
+    /* Type colors */
+    .alert-box.follow { border-color: #9147ff; }
+    .alert-box.sub { border-color: #ffcc00; }
+    .alert-box.sub .alert-type { color: #ffcc00; }
+    .alert-box.sub .alert-username { text-shadow: 0 0 30px rgba(255, 204, 0, 0.4); }
+    .alert-box.raid { border-color: #ff4444; }
+    .alert-box.raid .alert-type { color: #ff4444; }
+    .alert-box.raid .alert-username { text-shadow: 0 0 30px rgba(255, 68, 68, 0.4); }
+    .alert-box.bits { border-color: #00e5ff; }
+    .alert-box.bits .alert-type { color: #00e5ff; }
+    .alert-box.bits .alert-username { text-shadow: 0 0 30px rgba(0, 229, 255, 0.4); }
+    .alert-box.bits .alert-amount { font-size: 22px; font-weight: 700; color: #00e5ff; margin-top: 4px; }
+    .alert-box.donation { border-color: #00e676; }
+    .alert-box.donation .alert-type { color: #00e676; }
+    .alert-box.donation .alert-username { text-shadow: 0 0 30px rgba(0, 230, 118, 0.4); }
+    .alert-box.donation .alert-amount { font-size: 22px; font-weight: 700; color: #00e676; margin-top: 4px; }
+
+    /* Particles */
+    .particle {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        pointer-events: none;
+        animation: particleFly 1s ease-out forwards;
+    }
+
+    @keyframes particleFly {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+    }
+
+    /* ═══════════════════════════════════════════
+       BOTTOM BAR - Ticker / Now Playing / Branding
+       ═══════════════════════════════════════════ */
+    #bottom-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        z-index: 10;
+    }
+
+    #ticker {
+        font-size: 13px;
+        color: rgba(255,255,255,0.6);
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    #ticker span {
+        display: inline-block;
+        animation: scroll 30s linear infinite;
+    }
+
+    @keyframes scroll {
+        0% { transform: translateX(100vw); }
+        100% { transform: translateX(-100%); }
+    }
+
+    #uptime-display {
+        margin-left: auto;
+        font-size: 13px;
+        color: rgba(255,255,255,0.5);
+        font-variant-numeric: tabular-nums;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    #live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e91916;
+        animation: livePulse 1.5s ease infinite;
+    }
+
+    @keyframes livePulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(233, 25, 22, 0.6); }
+        50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(233, 25, 22, 0); }
+    }
+
+    /* ═══════════════════════════════════════════
+       RECENT EVENT TICKER (left side)
+       ═══════════════════════════════════════════ */
+    #recent-event {
+        position: absolute;
+        bottom: 52px;
+        left: 20px;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+        border-left: 3px solid #9147ff;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    #recent-event.visible { opacity: 1; }
+
+    #recent-event .event-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #9147ff;
+        margin-bottom: 2px;
+    }
+</style>
+</head>
+<body>
+
+<!-- ══════ TOP BAR ══════ -->
+<div id="top-bar">
+    <div id="channel-name">{{ config.TWITCH_CHANNEL | upper }}</div>
+    <div id="stats-row">
+        <div class="stat">
+            <span class="stat-icon">👁</span>
+            <span class="stat-val" id="s-viewers">0</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+            <span class="stat-icon">💜</span>
+            <span class="stat-val" id="s-followers">0</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+            <span class="stat-icon">⭐</span>
+            <span class="stat-val" id="s-subs">0</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+            <span class="stat-icon">💬</span>
+            <span class="stat-val" id="s-messages">0</span>
+        </div>
+    </div>
+</div>
+
+<!-- ══════ CHAT PANEL ══════ -->
+<div id="chat-panel"></div>
+
+<!-- ══════ ALERTS (center) ══════ -->
+<div id="alert-zone"></div>
+
+<!-- ══════ RECENT EVENT ══════ -->
+<div id="recent-event">
+    <div class="event-label">Latest</div>
+    <div id="recent-text">Waiting for events...</div>
+</div>
+
+<!-- ══════ BOTTOM BAR ══════ -->
+<div id="bottom-bar">
+    <div id="ticker"><span>Welcome to the stream! Type in chat to say hello &nbsp;&nbsp;•&nbsp;&nbsp; !stats for stream stats &nbsp;&nbsp;•&nbsp;&nbsp; !uptime to see how long we've been live &nbsp;&nbsp;•&nbsp;&nbsp;</span></div>
+    <div id="uptime-display">
+        <div id="live-dot"></div>
+        <span id="uptime">0:00:00</span>
+    </div>
+</div>
+
+<!-- ══════ SOCKETIO + LOGIC ══════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const chatPanel = document.getElementById('chat-panel');
+    const alertZone = document.getElementById('alert-zone');
+    const MAX_CHAT = 20;
+    let streamStart = null;
+
+    // ── Request stats on load ──
+    socket.on('connect', () => {
+        socket.emit('request_stats');
+    });
+
+    // ══════════════════════════════════════
+    // STATS
+    // ══════════════════════════════════════
+    socket.on('stats_update', (data) => {
+        updateStat('s-viewers', data.viewers || 0);
+        updateStat('s-followers', data.followers_this_stream || 0);
+        updateStat('s-subs', data.subs_this_stream || 0);
+        updateStat('s-messages', data.total_messages || 0);
+        if (data.stream_start) streamStart = new Date(data.stream_start);
+    });
+
+    socket.on('viewer_update', (data) => {
+        updateStat('s-viewers', data.viewers || 0);
+    });
+
+    function updateStat(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.textContent !== String(value)) {
+            el.textContent = value;
+            el.classList.add('pulse');
+            setTimeout(() => el.classList.remove('pulse'), 400);
+        }
+    }
+
+    // Uptime ticker
+    setInterval(() => {
+        if (!streamStart) return;
+        const diff = Math.floor((Date.now() - streamStart.getTime()) / 1000);
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        document.getElementById('uptime').textContent =
+            `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+
+    // ══════════════════════════════════════
+    // CHAT
+    // ══════════════════════════════════════
+    socket.on('chat_message', (data) => {
+        const el = document.createElement('div');
+        el.className = 'chat-msg';
+        el.style.setProperty('--user-color', data.color || '#9147ff');
+
+        let badges = '';
+        if (data.is_mod) badges += '<span class="badge mod">MOD</span>';
+        if (data.is_sub) badges += '<span class="badge sub">SUB</span>';
+
+        el.innerHTML = `
+            <span class="chat-badges">${badges}</span>
+            <span class="chat-user">${esc(data.display_name || data.username)}</span>
+            <span class="chat-text">${esc(data.message)}</span>
+        `;
+
+        chatPanel.appendChild(el);
+
+        while (chatPanel.children.length > MAX_CHAT) {
+            const old = chatPanel.firstChild;
+            old.classList.add('exit');
+            setTimeout(() => old.remove(), 300);
+        }
+    });
+
+    // ══════════════════════════════════════
+    // ALERTS
+    // ══════════════════════════════════════
+    const alertQueue = [];
+    let alertActive = false;
+    const alertIcons = { follow: '💜', sub: '⭐', raid: '⚔️', bits: '💎', donation: '💚' };
+    const alertLabels = { follow: 'New Follower', sub: 'New Subscriber', raid: 'Incoming Raid', bits: 'Bits Cheer', donation: 'Donation' };
+
+    socket.on('alert', (data) => {
+        alertQueue.push(data);
+        // Show recent event
+        showRecentEvent(data);
+        processAlerts();
+    });
+
+    function processAlerts() {
+        if (alertActive || alertQueue.length === 0) return;
+        alertActive = true;
+        const data = alertQueue.shift();
+
+        const el = document.createElement('div');
+        el.className = `alert-box ${data.type}`;
+        const amountHtml = data.amount ? `<div class="alert-amount">${esc(String(data.amount))} ${data.type === 'bits' ? 'bits' : ''}</div>` : '';
+        el.innerHTML = `
+            <div class="alert-icon">${alertIcons[data.type] || '🔔'}</div>
+            <div class="alert-type">${alertLabels[data.type] || data.type}</div>
+            <div class="alert-username">${esc(data.username)}</div>
+            ${amountHtml}
+            <div class="alert-message">${esc(data.message || '')}</div>
+        `;
+
+        alertZone.appendChild(el);
+        spawnParticles(el, data.type);
+
+        if (data.sound) {
+            const a = new Audio(data.sound);
+            a.volume = 0.5;
+            a.play().catch(() => {});
+        }
+
+        const duration = data.duration || {{ config.ALERT_DURATION }};
+        setTimeout(() => {
+            el.classList.add('exit');
+            setTimeout(() => {
+                el.remove();
+                alertActive = false;
+                processAlerts();
+            }, 500);
+        }, duration);
+    }
+
+    function spawnParticles(parent, type) {
+        const palettes = {
+            follow: ['#9147ff', '#bf94ff', '#00f0ff'],
+            sub: ['#ffcc00', '#ffe066', '#fff'],
+            raid: ['#ff4444', '#ff8888', '#ffcc00'],
+            bits: ['#00e5ff', '#64ffda', '#e0f7fa'],
+            donation: ['#00e676', '#69f0ae', '#e8f5e9'],
+        };
+        const colors = palettes[type] || palettes.follow;
+        for (let i = 0; i < 14; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const angle = (Math.PI * 2 * i) / 14;
+            const dist = 90 + Math.random() * 70;
+            p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+            p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+            p.style.background = colors[i % colors.length];
+            p.style.left = '50%';
+            p.style.top = '50%';
+            parent.appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
+    }
+
+    // ══════════════════════════════════════
+    // RECENT EVENT (bottom-left)
+    // ══════════════════════════════════════
+    let recentTimeout = null;
+    function showRecentEvent(data) {
+        const el = document.getElementById('recent-event');
+        const text = document.getElementById('recent-text');
+        text.textContent = `${data.username} - ${data.message || data.type}`;
+        el.classList.add('visible');
+        clearTimeout(recentTimeout);
+        recentTimeout = setTimeout(() => el.classList.remove('visible'), 15000);
+    }
+
+    // ══════════════════════════════════════
+    // AUTO-CLIP NOTIFICATION
+    // ══════════════════════════════════════
+    socket.on('auto_clip', (data) => {
+        showRecentEvent({
+            username: 'AUTO-CLIP',
+            message: `Chat went wild! (${data.message_count} msgs)`,
+            type: 'clip'
+        });
+    });
+
+    // ══════════════════════════════════════
+    // UTIL
+    // ══════════════════════════════════════
+    function esc(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

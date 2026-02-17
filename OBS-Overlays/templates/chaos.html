@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chaos Effects Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* === CHAOS CONTAINER (fullscreen) === */
+    #chaos-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9999;
+    }
+
+    /* === CHAOS LABEL (shows what triggered) === */
+    .chaos-label {
+        position: fixed;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        border: 2px solid #9147ff;
+        border-radius: 12px;
+        padding: 12px 28px;
+        font-size: 20px;
+        font-weight: 900;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        animation: labelIn 0.4s ease forwards;
+        z-index: 10000;
+        text-align: center;
+    }
+
+    .chaos-label.exit {
+        animation: labelOut 0.4s ease forwards;
+    }
+
+    @keyframes labelIn {
+        from { opacity: 0; transform: translateX(-50%) scale(0.5); }
+        to { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+    @keyframes labelOut {
+        from { opacity: 1; transform: translateX(-50%) scale(1); }
+        to { opacity: 0; transform: translateX(-50%) scale(0.5); }
+    }
+
+    /* === DISCO === */
+    .fx-disco {
+        animation: discoFlash 0.3s ease infinite;
+    }
+    @keyframes discoFlash {
+        0% { background: rgba(255,0,0,0.15); }
+        16% { background: rgba(255,165,0,0.15); }
+        33% { background: rgba(255,255,0,0.15); }
+        50% { background: rgba(0,255,0,0.15); }
+        66% { background: rgba(0,100,255,0.15); }
+        83% { background: rgba(128,0,255,0.15); }
+        100% { background: rgba(255,0,0,0.15); }
+    }
+
+    /* === SHAKE (applied to a wrapper or body) === */
+    .fx-shake {
+        animation: screenShake 0.08s infinite;
+    }
+    @keyframes screenShake {
+        0% { transform: translate(0, 0); }
+        25% { transform: translate(-8px, 6px); }
+        50% { transform: translate(6px, -8px); }
+        75% { transform: translate(-6px, -4px); }
+        100% { transform: translate(8px, 4px); }
+    }
+
+    /* === CONFETTI PARTICLES === */
+    .confetti-piece {
+        position: fixed;
+        width: 10px;
+        height: 14px;
+        border-radius: 2px;
+        animation: confettiFall linear forwards;
+        z-index: 9998;
+    }
+    @keyframes confettiFall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* === MATRIX RAIN === */
+    .matrix-col {
+        position: fixed;
+        top: -30px;
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        color: #00ff41;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        animation: matrixFall linear forwards;
+        opacity: 0.8;
+        z-index: 9998;
+        text-shadow: 0 0 8px #00ff41;
+    }
+    @keyframes matrixFall {
+        0% { transform: translateY(-100%); opacity: 0.8; }
+        100% { transform: translateY(110vh); opacity: 0; }
+    }
+
+    /* === RAVE === */
+    .fx-rave {
+        animation: raveStrobe 0.12s ease infinite;
+    }
+    @keyframes raveStrobe {
+        0%, 100% { background: rgba(145,71,255,0.2); }
+        25% { background: rgba(0,240,255,0.25); }
+        50% { background: transparent; }
+        75% { background: rgba(255,0,128,0.2); }
+    }
+
+    /* === GLITCH === */
+    .fx-glitch {
+        animation: glitchEffect 0.15s infinite;
+    }
+    @keyframes glitchEffect {
+        0% { filter: none; }
+        20% { filter: hue-rotate(90deg) saturate(2); }
+        40% { filter: invert(0.1) hue-rotate(180deg); }
+        60% { filter: none; clip-path: inset(40% 0 30% 0); }
+        80% { filter: hue-rotate(270deg) saturate(3); clip-path: inset(10% 0 60% 0); }
+        100% { filter: none; clip-path: none; }
+    }
+
+    /* === HEARTS === */
+    .heart-particle {
+        position: fixed;
+        font-size: 24px;
+        animation: heartFloat linear forwards;
+        z-index: 9998;
+    }
+    @keyframes heartFloat {
+        0% { transform: translateY(110vh) scale(1) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(-20px) scale(0.5) rotate(30deg); opacity: 0; }
+    }
+
+    /* === JUMPSCARE === */
+    .fx-jumpscare {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 300px;
+        background: rgba(0,0,0,0.9);
+        animation: scareIn 0.15s ease forwards;
+        z-index: 10001;
+    }
+    @keyframes scareIn {
+        0% { opacity: 0; transform: scale(3); }
+        30% { opacity: 1; transform: scale(1); }
+        100% { opacity: 1; transform: scale(1.05); }
+    }
+    .fx-jumpscare.exit {
+        animation: scareOut 0.3s ease forwards;
+    }
+    @keyframes scareOut {
+        from { opacity: 1; }
+        to { opacity: 0; transform: scale(0.5); }
+    }
+</style>
+</head>
+<body>
+<div id="chaos-layer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const layer = document.getElementById('chaos-layer');
+    let chaosActive = false;
+
+    socket.on('chaos_trigger', (data) => {
+        if (chaosActive) return; // Don't overlap
+        chaosActive = true;
+        showLabel(data);
+        runEffect(data.effect, data.duration);
+        setTimeout(() => { chaosActive = false; }, data.duration + 500);
+    });
+
+    function showLabel(data) {
+        const label = document.createElement('div');
+        label.className = 'chaos-label';
+        label.textContent = `${data.icon} ${data.name}`;
+        document.body.appendChild(label);
+        setTimeout(() => {
+            label.classList.add('exit');
+            setTimeout(() => label.remove(), 400);
+        }, Math.min(data.duration - 500, 3000));
+    }
+
+    function runEffect(effect, duration) {
+        switch (effect) {
+            case 'disco': fxDisco(duration); break;
+            case 'shake': fxShake(duration); break;
+            case 'confetti': fxConfetti(duration); break;
+            case 'matrix': fxMatrix(duration); break;
+            case 'rave': fxRave(duration); break;
+            case 'glitch': fxGlitch(duration); break;
+            case 'hearts': fxHearts(duration); break;
+            case 'jumpscare': fxJumpscare(duration); break;
+        }
+    }
+
+    // === DISCO ===
+    function fxDisco(duration) {
+        layer.classList.add('fx-disco');
+        setTimeout(() => layer.classList.remove('fx-disco'), duration);
+    }
+
+    // === SHAKE ===
+    function fxShake(duration) {
+        layer.classList.add('fx-shake');
+        setTimeout(() => {
+            layer.classList.remove('fx-shake');
+            layer.style.transform = '';
+        }, duration);
+    }
+
+    // === CONFETTI ===
+    function fxConfetti(duration) {
+        const colors = ['#ff0000','#ff8800','#ffff00','#00ff00','#0088ff','#8800ff','#ff00ff','#00ffcc'];
+        const interval = setInterval(() => {
+            for (let i = 0; i < 6; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+                piece.style.width = (6 + Math.random() * 10) + 'px';
+                piece.style.height = (8 + Math.random() * 12) + 'px';
+                piece.style.transform = `rotate(${Math.random()*360}deg)`;
+                document.body.appendChild(piece);
+                setTimeout(() => piece.remove(), 4000);
+            }
+        }, 100);
+        setTimeout(() => clearInterval(interval), duration);
+    }
+
+    // === MATRIX RAIN ===
+    function fxMatrix(duration) {
+        const chars = 'アカサタナハマヤラワ0123456789ABCDEF';
+        const interval = setInterval(() => {
+            for (let i = 0; i < 3; i++) {
+                const col = document.createElement('div');
+                col.className = 'matrix-col';
+                col.style.left = Math.random() * 100 + 'vw';
+                col.style.fontSize = (12 + Math.random() * 8) + 'px';
+                col.style.animationDuration = (2 + Math.random() * 3) + 's';
+                let text = '';
+                for (let j = 0; j < 15 + Math.floor(Math.random()*10); j++) {
+                    text += chars[Math.floor(Math.random() * chars.length)];
+                }
+                col.textContent = text;
+                document.body.appendChild(col);
+                setTimeout(() => col.remove(), 5000);
+            }
+        }, 150);
+        setTimeout(() => clearInterval(interval), duration);
+    }
+
+    // === RAVE ===
+    function fxRave(duration) {
+        layer.classList.add('fx-rave');
+        setTimeout(() => layer.classList.remove('fx-rave'), duration);
+    }
+
+    // === GLITCH ===
+    function fxGlitch(duration) {
+        layer.classList.add('fx-glitch');
+        // Also add glitch bars
+        const interval = setInterval(() => {
+            const bar = document.createElement('div');
+            bar.style.cssText = `
+                position:fixed; left:0; right:0; height:${2+Math.random()*8}px;
+                top:${Math.random()*100}%; background:rgba(255,0,128,0.3);
+                z-index:9999; pointer-events:none;
+            `;
+            document.body.appendChild(bar);
+            setTimeout(() => bar.remove(), 150);
+        }, 100);
+        setTimeout(() => {
+            layer.classList.remove('fx-glitch');
+            layer.style.filter = '';
+            layer.style.clipPath = '';
+            clearInterval(interval);
+        }, duration);
+    }
+
+    // === HEARTS ===
+    function fxHearts(duration) {
+        const heartEmojis = ['❤️','💕','💖','💗','💝','💜','🧡','💛'];
+        const interval = setInterval(() => {
+            for (let i = 0; i < 4; i++) {
+                const h = document.createElement('div');
+                h.className = 'heart-particle';
+                h.textContent = heartEmojis[Math.floor(Math.random()*heartEmojis.length)];
+                h.style.left = Math.random() * 100 + 'vw';
+                h.style.fontSize = (16 + Math.random() * 24) + 'px';
+                h.style.animationDuration = (3 + Math.random() * 3) + 's';
+                document.body.appendChild(h);
+                setTimeout(() => h.remove(), 6000);
+            }
+        }, 120);
+        setTimeout(() => clearInterval(interval), duration);
+    }
+
+    // === JUMPSCARE ===
+    function fxJumpscare(duration) {
+        const scareEmojis = ['👻','💀','🎃','👹','😱'];
+        const el = document.createElement('div');
+        el.className = 'fx-jumpscare';
+        el.textContent = scareEmojis[Math.floor(Math.random()*scareEmojis.length)];
+        document.body.appendChild(el);
+        setTimeout(() => {
+            el.classList.add('exit');
+            setTimeout(() => el.remove(), 300);
+        }, duration - 300);
+    }
+</script>
+</body>
+</html>

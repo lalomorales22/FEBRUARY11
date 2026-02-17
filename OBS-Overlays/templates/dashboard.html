@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Control Dashboard</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #0e0e10;
+        color: #efeff1;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+    }
+
+    /* === HEADER === */
+    header {
+        background: #18181b;
+        border-bottom: 2px solid #9147ff;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    header h1 {
+        font-size: 20px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #00e600;
+        display: inline-block;
+        margin-right: 6px;
+        animation: blink 2s ease infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .status-text { font-size: 13px; color: #adadb8; }
+
+    /* === MAIN GRID === */
+    main {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        padding: 20px;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* === CARDS === */
+    .card {
+        background: #18181b;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #2f2f35;
+    }
+
+    .card h2 {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #9147ff;
+        margin-bottom: 16px;
+    }
+
+    /* === STATS GRID === */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .stat-card {
+        background: #0e0e10;
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+
+    .stat-card .number {
+        font-size: 36px;
+        font-weight: 900;
+        color: #00f0ff;
+    }
+
+    .stat-card .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #adadb8;
+        margin-top: 4px;
+    }
+
+    /* === BUTTONS === */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+        background: #9147ff;
+        color: #fff;
+    }
+    .btn-primary:hover { background: #a970ff; }
+
+    .btn-success {
+        background: #00ad03;
+        color: #fff;
+    }
+
+    .btn-warning {
+        background: #ff8c00;
+        color: #fff;
+    }
+
+    .btn-danger {
+        background: #e91916;
+        color: #fff;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        border: 1px solid #2f2f35;
+        color: #efeff1;
+    }
+    .btn-ghost:hover { border-color: #9147ff; }
+
+    .btn-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* === OVERLAY LINKS === */
+    .overlay-links {
+        list-style: none;
+    }
+
+    .overlay-links li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #2f2f35;
+    }
+
+    .overlay-links li:last-child { border-bottom: none; }
+
+    .overlay-links code {
+        background: #0e0e10;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #00f0ff;
+        cursor: pointer;
+    }
+
+    .overlay-links code:hover {
+        background: #1a1a2e;
+    }
+
+    .overlay-label {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    /* === LOG === */
+    #event-log {
+        background: #0e0e10;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        color: #adadb8;
+    }
+
+    .log-entry {
+        padding: 3px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .log-time { color: #666; }
+    .log-type { color: #9147ff; font-weight: 600; }
+
+    /* === FULL WIDTH CARD === */
+    .full-width { grid-column: 1 / -1; }
+
+    /* === INPUT === */
+    input, select {
+        background: #0e0e10;
+        border: 1px solid #2f2f35;
+        color: #efeff1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 13px;
+    }
+
+    input:focus, select:focus {
+        outline: none;
+        border-color: #9147ff;
+    }
+
+    .input-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .input-row input { flex: 1; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>STREAM CONTROL</h1>
+    <div>
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Connected</span>
+    </div>
+</header>
+
+<main>
+    <!-- STATS -->
+    <div class="card">
+        <h2>Live Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number" id="d-viewers">0</div>
+                <div class="label">Viewers</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="d-followers">0</div>
+                <div class="label">New Followers</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="d-subs">0</div>
+                <div class="label">New Subs</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="d-messages">0</div>
+                <div class="label">Chat Messages</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 16px;">
+            <button class="btn btn-success" onclick="startStream()">Start Stream Timer</button>
+        </div>
+    </div>
+
+    <!-- TEST ALERTS -->
+    <div class="card">
+        <h2>Test Alerts</h2>
+        <div class="input-row">
+            <input type="text" id="test-username" placeholder="Username" value="TestViewer">
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="testAlert('follow')">💜 Follow</button>
+            <button class="btn btn-warning" onclick="testAlert('sub')">⭐ Sub</button>
+            <button class="btn btn-danger" onclick="testAlert('raid')">⚔️ Raid</button>
+            <button class="btn" style="background:#00bcd4;color:#fff" onclick="testAlert('bits', {amount: 500})">💎 Bits</button>
+            <button class="btn" style="background:#00c853;color:#fff" onclick="testAlert('donation', {amount: '$10.00'})">💚 Donate</button>
+            <button class="btn" style="background:#e91916;color:#fff" onclick="createClip()">🎬 Clip</button>
+        </div>
+
+        <h2 style="margin-top: 20px;">Test Chat</h2>
+        <div class="input-row">
+            <input type="text" id="test-message" placeholder="Test message..." value="Hello, this is a test!">
+            <button class="btn btn-ghost" onclick="testChat()">Send</button>
+        </div>
+    </div>
+
+    <!-- OBS SCENES -->
+    <div class="card">
+        <h2>OBS Scenes</h2>
+        <div class="btn-group" id="scene-buttons">
+            <button class="btn btn-ghost" onclick="loadScenes()">Load Scenes from OBS</button>
+        </div>
+    </div>
+
+    <!-- SOUND BOARD -->
+    <div class="card">
+        <h2>Sound Board</h2>
+        <div class="btn-group" id="soundboard-buttons">
+            <span style="color:#adadb8; font-size:13px;">Loading sounds...</span>
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:8px;">
+            Add .mp3/.wav files to <code style="background:#0e0e10;padding:2px 6px;border-radius:3px;color:#00f0ff;">static/sounds/soundboard/</code> then reload.
+            <button class="btn btn-ghost" style="padding:4px 10px; font-size:11px; margin-left:6px;" onclick="reloadSounds()">Reload</button>
+        </p>
+    </div>
+
+    <!-- AVATAR CONTROLS -->
+    <div class="card">
+        <h2>Avatar Control</h2>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size:12px; color:#adadb8; display:block; margin-bottom:6px;">VRM Model</label>
+            <select id="vrm-select" style="width:100%" onchange="switchVRM()">
+                <option value="">Loading...</option>
+            </select>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size:12px; color:#adadb8; display:block; margin-bottom:6px;">Expressions</label>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="triggerExpression('happy')">😊 Happy</button>
+                <button class="btn btn-warning" onclick="triggerExpression('surprised')">😮 Surprised</button>
+                <button class="btn btn-danger" onclick="triggerExpression('angry')">😠 Angry</button>
+                <button class="btn btn-ghost" onclick="triggerExpression('sad')">😢 Sad</button>
+                <button class="btn btn-ghost" onclick="triggerExpression('relaxed')">😌 Relaxed</button>
+            </div>
+        </div>
+        <div>
+            <label style="font-size:12px; color:#adadb8; display:block; margin-bottom:6px;">Motions</label>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="triggerMotion('wave')">👋 Wave</button>
+                <button class="btn btn-success" onclick="triggerMotion('nod')">🔽 Nod</button>
+                <button class="btn btn-ghost" onclick="triggerMotion('headShake')">🔄 Shake</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBTITLES -->
+    <div class="card">
+        <h2>Subtitles</h2>
+        <div class="input-row">
+            <input type="text" id="subtitle-text" placeholder="Push subtitle text..." style="flex:1">
+            <button class="btn btn-primary" onclick="pushSubtitle()">Push</button>
+            <button class="btn btn-ghost" onclick="clearSubtitle()">Clear</button>
+        </div>
+        <div style="margin-top: 12px;">
+            <label style="font-size:12px; color:#adadb8; display:block; margin-bottom:6px;">STT (Speech-to-Text)</label>
+            <div class="btn-group">
+                <button class="btn btn-success" id="btn-stt-start" onclick="startSTT()">🎤 Start STT</button>
+                <button class="btn btn-danger" id="btn-stt-stop" onclick="stopSTT()" style="display:none">⏹ Stop STT</button>
+            </div>
+            <span id="stt-status" style="font-size:11px; color:#adadb8; margin-left:8px;"></span>
+        </div>
+    </div>
+
+    <!-- CHAOS PRESETS -->
+    <div class="card">
+        <h2>💥 Chaos Presets</h2>
+        <div class="btn-group" id="chaos-buttons">
+            <span style="color:#adadb8; font-size:13px;">Loading presets...</span>
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:8px;">
+            Chat command: <code style="background:#0e0e10;padding:2px 6px;border-radius:3px;color:#00f0ff;">!chaos &lt;name&gt;</code>
+            &nbsp;|&nbsp; Cooldown: 15s
+        </p>
+    </div>
+
+    <!-- GOAL TRACKER -->
+    <div class="card">
+        <h2>🎯 Goal Tracker</h2>
+        <div id="goals-panel">
+            <span style="color:#adadb8; font-size:13px;">Loading goals...</span>
+        </div>
+        <div style="margin-top: 12px; display:flex; gap:8px;">
+            <button class="btn btn-ghost" style="font-size:11px;" onclick="resetGoals()">Reset All</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY URLS -->
+    <div class="card">
+        <h2>Overlay URLs</h2>
+        <p style="font-size: 12px; color: #adadb8; margin-bottom: 12px;">
+            Add these as Browser Sources in OBS. Click to copy.
+        </p>
+        <ul class="overlay-links">
+            <li>
+                <span class="overlay-label">Unified Scene</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/scene</code>
+            </li>
+            <li>
+                <span class="overlay-label">Alerts</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/alerts</code>
+            </li>
+            <li>
+                <span class="overlay-label">Chat</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/chat</code>
+            </li>
+            <li>
+                <span class="overlay-label">Stats Bar</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/stats</code>
+            </li>
+            <li>
+                <span class="overlay-label">Keyboard</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/keyboard</code>
+            </li>
+            <li>
+                <span class="overlay-label">Subtitles</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/subtitles</code>
+            </li>
+            <li>
+                <span class="overlay-label">VRM Avatar</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/avatar</code>
+            </li>
+            <li>
+                <span class="overlay-label">Sound Board</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/soundboard</code>
+            </li>
+            <li>
+                <span class="overlay-label">Goals</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/goals</code>
+            </li>
+            <li>
+                <span class="overlay-label">Chaos Effects</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/chaos</code>
+            </li>
+            <li>
+                <span class="overlay-label">Post-Stream Report</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/api/report/html</code>
+                <a href="/api/report/html" target="_blank" style="font-size:10px; color:#9147ff; margin-left:6px; text-decoration:none;">(open ↗)</a>
+            </li>
+            <li>
+                <span class="overlay-label">Webcam Tracker</span>
+                <code onclick="copyUrl(this)">http://localhost:{{ config.SERVER_PORT }}/overlay/tracker</code>
+                <span style="font-size:10px; color:#9147ff; margin-left:6px;">(open in browser — feeds webcam to avatar)</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="card">
+        <h2>⚡ Quick Links</h2>
+        <div class="btn-group">
+            <a href="/api/report/html" target="_blank" class="btn btn-primary" style="text-decoration:none;">📊 Post-Stream Report</a>
+            <a href="/config" target="_blank" class="btn btn-ghost" style="text-decoration:none;">⚙️ Config Editor</a>
+        </div>
+    </div>
+
+    <!-- EVENT LOG -->
+    <div class="card full-width">
+        <h2>Event Log</h2>
+        <div id="event-log">
+            <div class="log-entry"><span class="log-time">--:--</span> <span class="log-type">SYSTEM</span> Dashboard loaded. Waiting for events...</div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    // === CONNECTION STATUS ===
+    socket.on('connect', () => {
+        document.getElementById('status-dot').style.background = '#00e600';
+        document.getElementById('status-text').textContent = 'Connected';
+        socket.emit('request_stats');
+    });
+
+    socket.on('disconnect', () => {
+        document.getElementById('status-dot').style.background = '#e91916';
+        document.getElementById('status-text').textContent = 'Disconnected';
+    });
+
+    // === STATS UPDATES ===
+    socket.on('stats_update', (data) => {
+        document.getElementById('d-viewers').textContent = data.viewers || 0;
+        document.getElementById('d-followers').textContent = data.followers_this_stream || 0;
+        document.getElementById('d-subs').textContent = data.subs_this_stream || 0;
+        document.getElementById('d-messages').textContent = data.total_messages || 0;
+    });
+
+    socket.on('viewer_update', (data) => {
+        document.getElementById('d-viewers').textContent = data.viewers || 0;
+    });
+
+    // === LOG EVENTS ===
+    socket.on('alert', (data) => {
+        addLog(data.type.toUpperCase(), data.message);
+    });
+
+    socket.on('chat_message', (data) => {
+        addLog('CHAT', `${data.display_name}: ${data.message}`);
+        const msgs = parseInt(document.getElementById('d-messages').textContent) + 1;
+        document.getElementById('d-messages').textContent = msgs;
+    });
+
+    socket.on('auto_clip', (data) => {
+        const created = data.created ? '✅ Clip created!' : '⚠️ Clip notification only';
+        const url = data.edit_url ? ` — ${data.edit_url}` : '';
+        addLog('CLIP', `${created} (${data.message_count} msgs)${url}`);
+    });
+
+    function addLog(type, message) {
+        const log = document.getElementById('event-log');
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-time">${time}</span> <span class="log-type">${type}</span> ${escapeHtml(message)}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+
+        // Keep log manageable
+        while (log.children.length > 100) {
+            log.removeChild(log.firstChild);
+        }
+    }
+
+    // === CLIP ===
+    function createClip() {
+        addLog('CLIP', 'Creating clip...');
+        fetch('/api/clip', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    addLog('CLIP', `✅ Clip created! ${data.clip.edit_url || ''}`);
+                } else {
+                    addLog('CLIP', `❌ ${data.message}`);
+                }
+            })
+            .catch(() => addLog('CLIP', '❌ Request failed'));
+    }
+
+    // === TEST FUNCTIONS ===
+    function testAlert(type, extra = {}) {
+        const username = document.getElementById('test-username').value || 'TestViewer';
+        fetch('/api/test-alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, username, viewers: 42, ...extra }),
+        });
+    }
+
+    function testChat() {
+        const message = document.getElementById('test-message').value || 'Test message!';
+        const username = document.getElementById('test-username').value || 'TestViewer';
+        fetch('/api/test-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, message }),
+        });
+    }
+
+    function startStream() {
+        fetch('/api/start-stream', { method: 'POST' });
+        addLog('SYSTEM', 'Stream session started!');
+    }
+
+    function loadScenes() {
+        fetch('/api/scenes')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('scene-buttons');
+                if (data.scenes.length === 0) {
+                    const mode = data.obs_mode || 'unknown';
+                    const err = data.obs_last_error ? ` (${escapeHtml(data.obs_last_error)})` : '';
+                    container.innerHTML = `<span style="color:#adadb8;font-size:13px;">No scenes found. Mode: ${escapeHtml(mode)}${err}</span>`;
+                    queueEmbedMetrics();
+                    return;
+                }
+                container.innerHTML = '';
+                data.scenes.forEach(scene => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-ghost';
+                    btn.textContent = scene;
+                    btn.onclick = () => switchScene(scene);
+                    container.appendChild(btn);
+                });
+                queueEmbedMetrics();
+            });
+    }
+
+    function switchScene(name) {
+        fetch('/api/scene', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scene: name }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') {
+                addLog('OBS', `Switched to scene: ${name}`);
+            }
+        });
+    }
+
+    // === AVATAR CONTROLS ===
+    function loadVRMs() {
+        fetch('/api/avatar/vrms')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('vrm-select');
+                sel.innerHTML = '';
+                (data.vrms || []).forEach(vrm => {
+                    const opt = document.createElement('option');
+                    opt.value = vrm.path;
+                    opt.textContent = `${vrm.name} (${vrm.size_mb} MB)`;
+                    sel.appendChild(opt);
+                });
+                // Select current VRM
+                fetch('/api/avatar/settings')
+                    .then(r => r.json())
+                    .then(settings => { sel.value = settings.vrmPath || ''; })
+                    .catch(() => {});
+            })
+            .catch(() => {
+                document.getElementById('vrm-select').innerHTML = '<option value="">No VRMs found</option>';
+            });
+    }
+
+    function switchVRM() {
+        const path = document.getElementById('vrm-select').value;
+        if (!path) return;
+        fetch('/api/avatar/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vrmPath: path }),
+        }).then(() => addLog('AVATAR', `Switched VRM: ${path}`));
+    }
+
+    function triggerExpression(expr) {
+        fetch('/api/avatar/expression', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expression: expr, intensity: 1.0, duration: 2000 }),
+        }).then(() => addLog('AVATAR', `Expression: ${expr}`));
+    }
+
+    function triggerMotion(type) {
+        fetch('/api/avatar/motion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type }),
+        }).then(() => addLog('AVATAR', `Motion: ${type}`));
+    }
+
+    // === SUBTITLE CONTROLS ===
+    function pushSubtitle() {
+        const text = document.getElementById('subtitle-text').value.trim();
+        if (!text) return;
+        fetch('/api/subtitles/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, final: true }),
+        }).then(() => {
+            addLog('SUBTITLE', text);
+            document.getElementById('subtitle-text').value = '';
+        });
+    }
+
+    function clearSubtitle() {
+        fetch('/api/subtitles/clear', { method: 'POST' })
+            .then(() => addLog('SUBTITLE', 'Cleared'));
+    }
+
+    // === STT (Speech-to-Text) ===
+    let sttRecognition = null;
+    let sttActive = false;
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function startSTT() {
+        if (!SpeechRecognitionCtor) {
+            addLog('STT', 'Speech recognition not supported in this browser');
+            return;
+        }
+        if (sttActive) return;
+
+        sttRecognition = new SpeechRecognitionCtor();
+        sttRecognition.continuous = true;
+        sttRecognition.interimResults = true;
+        sttRecognition.lang = 'en-US';
+
+        sttRecognition.onstart = () => {
+            sttActive = true;
+            document.getElementById('btn-stt-start').style.display = 'none';
+            document.getElementById('btn-stt-stop').style.display = '';
+            document.getElementById('stt-status').textContent = '🔴 Listening...';
+            addLog('STT', 'Capture started');
+        };
+
+        sttRecognition.onend = () => {
+            if (sttActive) {
+                // Auto-restart if still wanted
+                try { sttRecognition.start(); } catch(e) {}
+                return;
+            }
+            document.getElementById('btn-stt-start').style.display = '';
+            document.getElementById('btn-stt-stop').style.display = 'none';
+            document.getElementById('stt-status').textContent = '';
+        };
+
+        sttRecognition.onerror = (e) => {
+            addLog('STT', `Error: ${e.error}`);
+            if (e.error === 'not-allowed') {
+                sttActive = false;
+                document.getElementById('btn-stt-start').style.display = '';
+                document.getElementById('btn-stt-stop').style.display = 'none';
+                document.getElementById('stt-status').textContent = 'Mic denied';
+            }
+        };
+
+        sttRecognition.onresult = (event) => {
+            let interimText = '';
+            let finalText = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript.trim();
+                if (!transcript) continue;
+                if (event.results[i].isFinal) {
+                    finalText += (finalText ? ' ' : '') + transcript;
+                } else {
+                    interimText = transcript;
+                }
+            }
+            if (finalText) {
+                fetch('/api/subtitles/push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: finalText, final: true }),
+                });
+            } else if (interimText) {
+                fetch('/api/subtitles/push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: interimText, final: false }),
+                });
+            }
+        };
+
+        try { sttRecognition.start(); } catch(e) { addLog('STT', `Start failed: ${e}`); }
+    }
+
+    function stopSTT() {
+        sttActive = false;
+        if (sttRecognition) {
+            try { sttRecognition.stop(); } catch(e) {}
+        }
+        addLog('STT', 'Capture stopped');
+        document.getElementById('btn-stt-start').style.display = '';
+        document.getElementById('btn-stt-stop').style.display = 'none';
+        document.getElementById('stt-status').textContent = '';
+        // Clear subtitles when stopping
+        fetch('/api/subtitles/clear', { method: 'POST' });
+    }
+
+    // === SOUND BOARD ===
+    function loadSounds() {
+        fetch('/api/soundboard/sounds')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('soundboard-buttons');
+                const sounds = data.sounds || [];
+                if (sounds.length === 0) {
+                    container.innerHTML = '<span style="color:#adadb8;font-size:13px;">No sounds found. Add .mp3 files to static/sounds/soundboard/</span>';
+                    return;
+                }
+                container.innerHTML = '';
+                sounds.forEach(sound => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-primary';
+                    btn.textContent = `${sound.icon} ${sound.name}`;
+                    btn.onclick = () => playSound(sound.slug);
+                    container.appendChild(btn);
+                });
+            })
+            .catch(() => {
+                document.getElementById('soundboard-buttons').innerHTML = '<span style="color:#adadb8;font-size:13px;">Failed to load sounds</span>';
+            });
+    }
+
+    function playSound(slug) {
+        fetch('/api/soundboard/play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, triggeredBy: 'Dashboard' }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') addLog('SOUND', `Played: ${data.sound.name}`);
+            else addLog('SOUND', `Error: ${data.message}`);
+        });
+    }
+
+    function reloadSounds() {
+        fetch('/api/soundboard/reload', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                addLog('SOUND', `Reloaded: ${data.count} sounds`);
+                loadSounds();
+            });
+    }
+
+    // === GOAL TRACKER ===
+    const goalIcons = { followers: '💜', subs: '⭐', donations: '💚', bits: '💎' };
+    const goalColors = { followers: '#9147ff', subs: '#ffcc00', donations: '#00e676', bits: '#00e5ff' };
+
+    function loadGoals() {
+        fetch('/api/goals')
+            .then(r => r.json())
+            .then(data => renderGoals(data.goals || []))
+            .catch(() => {
+                document.getElementById('goals-panel').innerHTML = '<span style="color:#e91916;font-size:13px;">Failed to load goals</span>';
+            });
+    }
+
+    function renderGoals(goals) {
+        const panel = document.getElementById('goals-panel');
+        if (!goals.length) {
+            panel.innerHTML = '<span style="color:#adadb8;font-size:13px;">No goals configured</span>';
+            return;
+        }
+        panel.innerHTML = '';
+        goals.forEach(g => {
+            const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100) : 0;
+            const color = goalColors[g.type] || '#9147ff';
+            const icon = goalIcons[g.type] || '🎯';
+            const div = document.createElement('div');
+            div.style.cssText = 'margin-bottom:12px; padding:10px; background:#0e0e10; border-radius:8px; border:1px solid ' + color + '33;';
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:12px; font-weight:700; color:${color}; text-transform:uppercase; letter-spacing:1px;">
+                        ${icon} ${escapeHtml(g.title)}
+                    </span>
+                    <label style="font-size:11px; color:#adadb8; cursor:pointer;">
+                        <input type="checkbox" ${g.enabled ? 'checked' : ''} onchange="toggleGoal('${g.id}', this.checked)"> Visible
+                    </label>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                    <input type="number" value="${g.current}" min="0" style="width:70px; font-size:13px;" id="goal-cur-${g.id}">
+                    <span style="color:#adadb8; font-size:12px;">/</span>
+                    <input type="number" value="${g.target}" min="1" style="width:70px; font-size:13px;" id="goal-tgt-${g.id}">
+                    <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="saveGoal('${g.id}')">Save</button>
+                    <button class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="incrementGoal('${g.id}')">+1</button>
+                </div>
+                <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${color}; border-radius:3px; transition:width 0.5s;"></div>
+                </div>
+                <div style="font-size:10px; color:#adadb8; text-align:right; margin-top:2px;">${Math.round(pct)}%</div>
+            `;
+            panel.appendChild(div);
+        });
+        queueEmbedMetrics();
+    }
+
+    function saveGoal(id) {
+        const current = parseInt(document.getElementById(`goal-cur-${id}`).value) || 0;
+        const target = parseInt(document.getElementById(`goal-tgt-${id}`).value) || 1;
+        fetch('/api/goals/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, current, target }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') addLog('GOALS', `Updated ${id}: ${current}/${target}`);
+            loadGoals();
+        });
+    }
+
+    function incrementGoal(id) {
+        fetch('/api/goals/increment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, amount: 1 }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') loadGoals();
+        });
+    }
+
+    function toggleGoal(id, enabled) {
+        fetch('/api/goals/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, enabled }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') addLog('GOALS', `${id} ${enabled ? 'shown' : 'hidden'}`);
+        });
+    }
+
+    function resetGoals() {
+        if (!confirm('Reset all goal progress to 0?')) return;
+        fetch('/api/goals/reset', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                addLog('GOALS', 'All goals reset');
+                loadGoals();
+            });
+    }
+
+    // Listen for real-time goal updates
+    socket.on('goals_update', (data) => {
+        renderGoals(data.goals || []);
+    });
+
+    // === CHAOS PRESETS ===
+    function loadChaosPresets() {
+        fetch('/api/chaos/presets')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('chaos-buttons');
+                const presets = data.presets || [];
+                if (presets.length === 0) {
+                    container.innerHTML = '<span style="color:#adadb8;font-size:13px;">No presets</span>';
+                    return;
+                }
+                container.innerHTML = '';
+                presets.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-primary';
+                    btn.textContent = `${p.icon} ${p.name}`;
+                    btn.title = p.description;
+                    btn.onclick = () => triggerChaos(p.slug);
+                    container.appendChild(btn);
+                });
+                queueEmbedMetrics();
+            })
+            .catch(() => {
+                document.getElementById('chaos-buttons').innerHTML = '<span style="color:#e91916;font-size:13px;">Failed to load presets</span>';
+            });
+    }
+
+    function triggerChaos(slug) {
+        fetch('/api/chaos/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug }),
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') addLog('CHAOS', `${data.chaos.icon} ${data.chaos.name} triggered!`);
+            else addLog('CHAOS', `Error: ${data.message}`);
+        });
+    }
+
+    // Log chaos events from socket
+    socket.on('chaos_trigger', (data) => {
+        addLog('CHAOS', `${data.icon} ${data.name} (by ${data.triggeredBy})`);
+    });
+
+    // Load VRM list, sounds, goals, and chaos on page load
+    loadVRMs();
+    loadSounds();
+    loadGoals();
+    loadChaosPresets();
+
+    function copyUrl(el) {
+        navigator.clipboard.writeText(el.textContent);
+        const orig = el.textContent;
+        el.textContent = 'Copied!';
+        el.style.color = '#00e600';
+        setTimeout(() => {
+            el.textContent = orig;
+            el.style.color = '';
+        }, 1000);
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    let embedMetricsTimer = null;
+
+    function postEmbedMetrics() {
+        if (window.parent === window) return;
+        const doc = document.documentElement;
+        const body = document.body;
+        const width = Math.max(
+            doc ? doc.scrollWidth : 0,
+            doc ? doc.clientWidth : 0,
+            body ? body.scrollWidth : 0,
+            body ? body.clientWidth : 0
+        );
+        const height = Math.max(
+            doc ? doc.scrollHeight : 0,
+            doc ? doc.clientHeight : 0,
+            body ? body.scrollHeight : 0,
+            body ? body.clientHeight : 0
+        );
+
+        window.parent.postMessage(
+            {
+                source: 'obs-overlays',
+                type: 'embed-metrics',
+                path: window.location.pathname,
+                width,
+                height
+            },
+            '*'
+        );
+    }
+
+    function queueEmbedMetrics() {
+        if (embedMetricsTimer !== null) return;
+        embedMetricsTimer = window.setTimeout(() => {
+            embedMetricsTimer = null;
+            postEmbedMetrics();
+        }, 80);
+    }
+
+    window.addEventListener('load', () => {
+        queueEmbedMetrics();
+        window.setTimeout(queueEmbedMetrics, 240);
+    });
+    window.addEventListener('resize', queueEmbedMetrics);
+</script>
+</body>
+</html>

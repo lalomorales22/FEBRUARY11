@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "switchCooldownMs": 2600,
+  "hysteresisDb": 3,
+  "defaultHoldMs": 900,
+  "rules": [
+    {
+      "id": "generated_mic_camera",
+      "inputName": "Mic/Aux",
+      "sceneName": "Camera",
+      "activationDb": -52,
+      "priority": 130,
+      "holdMs": 250
+    },
+    {
+      "id": "generated_mic_gameplay",
+      "inputName": "Mic/Aux",
+      "sceneName": "Gameplay",
+      "activationDb": -56,
+      "priority": 90,
+      "holdMs": 400
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "kinetic-slam",
+  "name": "Kinetic Slam",
+  "description": "Fast scene switch + transform pulse with filter flash. Edit scene/source names to match your OBS setup.",
+  "cooldownMs": 14000,
+  "tags": [
+    "hype",
+    "camera",
+    "pulse"
+  ],
+  "steps": [
+    {
+      "type": "serial",
+      "steps": [
+        {
+          "type": "setProgramScene",
+          "sceneName": "Camera"
+        },
+        {
+          "type": "sleep",
+          "frames": 2
+        },
+        {
+          "type": "parallel",
+          "steps": [
+            {
+              "type": "sceneItemTransform",
+              "sceneName": "Camera",
+              "sceneItemSourceName": "Facecam",
+              "transform": {
+                "positionX": 36,
+                "positionY": 22,
+                "scaleX": 1.09,
+                "scaleY": 1.09,
+                "rotation": 1.5
+              }
+            },
+            {
+              "type": "sourceFilter",
+              "sourceName": "Facecam",
+              "filterName": "Color Correction",
+              "settings": {
+                "saturation": 0.18,
+                "gamma": 0.12
+              },
+              "overlay": true
+            }
+          ]
+        },
+        {
+          "type": "sleep",
+          "ms": 220
+        },
+        {
+          "type": "parallel",
+          "steps": [
+            {
+              "type": "sceneItemTransform",
+              "sceneName": "Camera",
+              "sceneItemSourceName": "Facecam",
+              "transform": {
+                "positionX": 0,
+                "positionY": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+                "rotation": 0
+              }
+            },
+            {
+              "type": "sourceFilter",
+              "sourceName": "Facecam",
+              "filterName": "Color Correction",
+              "settings": {
+                "saturation": 0,
+                "gamma": 0
+              },
+              "overlay": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

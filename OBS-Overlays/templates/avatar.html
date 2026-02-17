@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VRM Avatar Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    #avatar-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    #avatar-status {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    body.show-status #avatar-status {
+        opacity: 1;
+    }
+
+    #loading-indicator {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        letter-spacing: 1px;
+        pointer-events: none;
+    }
+
+    #loading-indicator .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(145, 71, 255, 0.25);
+        border-top-color: #9147ff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    #loading-indicator.hidden { display: none; }
+
+    #error-display {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #ff6b6b;
+        font-size: 13px;
+        max-width: 80%;
+        display: none;
+    }
+</style>
+</head>
+<body>
+
+<canvas id="avatar-canvas"></canvas>
+
+<div id="loading-indicator">
+    <div class="spinner"></div>
+    <div id="loading-text">Loading VRM Avatar...</div>
+</div>
+
+<div id="error-display"></div>
+<div id="avatar-status">VRM Avatar</div>
+
+<!-- Socket.IO (non-module) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+
+<!-- Import map: pins "three" so @pixiv/three-vrm shares the same instance -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMLoaderPlugin, VRMUtils } from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.1.0/lib/three-vrm.module.js';
+
+    const lerp  = THREE.MathUtils.lerp;
+    const clamp = THREE.MathUtils.clamp;
+
+    /* ── DOM refs ──────────────────────────── */
+    const canvas     = document.getElementById('avatar-canvas');
+    const loadingEl  = document.getElementById('loading-indicator');
+    const loadingTxt = document.getElementById('loading-text');
+    const errorEl    = document.getElementById('error-display');
+    const statusEl   = document.getElementById('avatar-status');
+
+    function showError(msg) {
+        console.error('[VRM]', msg);
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+    }
+
+    function flashStatus(msg) {
+        statusEl.textContent = msg;
+        document.body.classList.add('show-status');
+        setTimeout(() => document.body.classList.remove('show-status'), 3000);
+    }
+
+    /* ── Socket.IO ─────────────────────────── */
+    let socket = null;
+    try {
+        socket = io();
+        socket.on('avatar_settings',   applySettings);
+        socket.on('avatar_expression',  applyExpression);
+        socket.on('avatar_motion',      applyMotion);
+        socket.on('avatar_rig_data',    onRigData);       /* ← tracking data from tracker page */
+        socket.on('alert',              onAlert);
+        socket.on('chat_message',       onChatMessage);
+    } catch (e) {
+        console.warn('[VRM] Socket.IO init failed, running standalone', e);
+    }
+
+    /* ── Config ────────────────────────────── */
+    const CONFIG = {
+        vrmPath: '/static/VRMs/lalo.vrm',
+        cameraFov: 18,
+        cameraPosition: { x: 0, y: 1.35, z: 3.5 },
+        cameraLookAt:   { x: 0, y: 1.2,  z: 0   },
+        /* idle fallback */
+        idleBreathingSpeed:  1.2,
+        idleBreathingAmount: 0.006,
+        idleSwaySpeed:   0.4,
+        idleSwayAmount:  0.008,
+        blinkInterval:   3500,
+        blinkDuration:   120,
+        autoLookAround:  true,
+        lookAroundSpeed: 0.6,
+        lookAroundAmount: 0.03,
+        /* tracking tuning */
+        lerpAmount:     0.6,
+        lerpAmountFace: 0.7,
+    };
+
+    /* ── Three.js Setup ────────────────────── */
+    const renderer = new THREE.WebGLRenderer({
+        canvas, alpha: true, antialias: true, powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(CONFIG.cameraFov, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(CONFIG.cameraPosition.x, CONFIG.cameraPosition.y, CONFIG.cameraPosition.z);
+    camera.lookAt(CONFIG.cameraLookAt.x, CONFIG.cameraLookAt.y, CONFIG.cameraLookAt.z);
+
+    /* Lighting */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+    const dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
+    dirLight.position.set(1.5, 2, 2.5);
+    scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0xaaccff, 0.3);
+    fillLight.position.set(-1, 1, -1);
+    scene.add(fillLight);
+
+    /* Resize */
+    function onResize() {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    /* ── VRM State ─────────────────────────── */
+    let currentVrm    = null;
+    let currentMixer   = null;
+    const clock        = new THREE.Clock();
+    let elapsedTime    = 0;
+    let lastBlinkTime  = 0;
+    let isBlinking     = false;
+    let blinkStartTime = 0;
+
+    /* ── Tracking State ────────────────────── */
+    let trackingActive  = false;
+    let lastRigTime     = 0;          /* timestamp of last received rig data */
+    let latestRig       = null;       /* { face, pose, rightHand, leftHand } */
+    const RIG_TIMEOUT   = 3000;       /* ms before falling back to idle if no rig data */
+
+    /* ── Load VRM ──────────────────────────── */
+    async function loadVRM(url) {
+        loadingEl.classList.remove('hidden');
+        errorEl.style.display = 'none';
+        loadingTxt.textContent = 'Loading VRM Avatar...';
+
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+
+        return new Promise((resolve, reject) => {
+            loader.load(url,
+                (gltf) => {
+                    const vrm = gltf.userData.vrm;
+                    if (!vrm) { showError('No VRM data in file'); reject(new Error('No VRM data')); return; }
+
+                    if (currentVrm) { scene.remove(currentVrm.scene); VRMUtils.deepDispose(currentVrm.scene); }
+
+                    VRMUtils.removeUnnecessaryJoints(gltf.scene);
+                    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+
+                    currentVrm = vrm;
+                    scene.add(vrm.scene);
+                    vrm.scene.rotation.y = Math.PI;
+                    currentMixer = new THREE.AnimationMixer(vrm.scene);
+
+                    loadingEl.classList.add('hidden');
+                    flashStatus('VRM Loaded — waiting for tracker...');
+                    console.log('[VRM] Loaded. Expressions:', Object.keys(vrm.expressionManager?._expressionMap || {}));
+                    resolve(vrm);
+                },
+                (progress) => {
+                    if (progress.total > 0) {
+                        loadingTxt.textContent = `Loading VRM Avatar... ${Math.round((progress.loaded / progress.total) * 100)}%`;
+                    }
+                },
+                (error) => { showError(`Failed to load VRM: ${error.message || error}`); reject(error); }
+            );
+        });
+    }
+
+    /* ═══════════════════════════════════════════
+       RIG DATA RECEIVER  (from tracker.html via Socket.IO)
+       ═══════════════════════════════════════════ */
+
+    function rigBone(boneName, rotation, lerpFactor) {
+        if (!currentVrm?.humanoid) return;
+        const bone = currentVrm.humanoid.getNormalizedBoneNode(boneName);
+        if (!bone || !rotation) return;
+        bone.rotation.x = lerp(bone.rotation.x, rotation.x ?? 0, lerpFactor);
+        bone.rotation.y = lerp(bone.rotation.y, rotation.y ?? 0, lerpFactor);
+        bone.rotation.z = lerp(bone.rotation.z, rotation.z ?? 0, lerpFactor);
+    }
+
+    function rigExpression(name, value, lerpFactor) {
+        if (!currentVrm?.expressionManager) return;
+        const current = currentVrm.expressionManager.getValue(name) ?? 0;
+        currentVrm.expressionManager.setValue(name, lerp(current, clamp(value, 0, 1), lerpFactor));
+    }
+
+    /* ── Apply face rig ────────────────────── */
+    function applyFaceRig(face) {
+        if (!face || !currentVrm) return;
+        const lf = CONFIG.lerpAmountFace;
+
+        /* Head rotation */
+        rigBone('neck', {
+            x: face.head.x * 0.4,
+            y: face.head.y * 0.4,
+            z: face.head.z * 0.4,
+        }, lf);
+        rigBone('head', {
+            x: face.head.x * 0.6,
+            y: face.head.y * 0.6,
+            z: face.head.z * 0.6,
+        }, lf);
+
+        /* Eyes — Kalidokit gives openness (1=open, 0=closed), VRM blink wants closedness */
+        const blinkL = 1 - (face.eye?.l ?? 1);
+        const blinkR = 1 - (face.eye?.r ?? 1);
+        rigExpression('blinkLeft',  blinkL, lf);
+        rigExpression('blinkRight', blinkR, lf);
+
+        /* Pupil look direction */
+        if (face.pupil) {
+            rigExpression('lookLeft',  face.pupil.x > 0 ?  face.pupil.x : 0, lf);
+            rigExpression('lookRight', face.pupil.x < 0 ? -face.pupil.x : 0, lf);
+            rigExpression('lookUp',    face.pupil.y > 0 ?  face.pupil.y : 0, lf);
+            rigExpression('lookDown',  face.pupil.y < 0 ? -face.pupil.y : 0, lf);
+        }
+
+        /* Mouth visemes */
+        const mouth = face.mouth?.shape;
+        if (mouth) {
+            rigExpression('aa', mouth.A ?? 0, lf);
+            rigExpression('ee', mouth.E ?? 0, lf);
+            rigExpression('ih', mouth.I ?? 0, lf);
+            rigExpression('oh', mouth.O ?? 0, lf);
+            rigExpression('ou', mouth.U ?? 0, lf);
+        }
+    }
+
+    /* ── Apply pose rig ────────────────────── */
+    function applyPoseRig(pose) {
+        if (!pose || !currentVrm) return;
+        const lp = CONFIG.lerpAmount;
+
+        /* Hips position offset (subtle, dampened) */
+        if (pose.Hips) {
+            const hips = currentVrm.humanoid.getNormalizedBoneNode('hips');
+            if (hips && pose.Hips.worldPosition) {
+                hips.position.x = lerp(hips.position.x, (pose.Hips.worldPosition.x ?? 0) * 0.1, lp);
+                hips.position.y = lerp(hips.position.y, (pose.Hips.worldPosition.y ?? 0) * 0.1 + 1, lp);
+            }
+            rigBone('hips', pose.Hips.rotation, lp * 0.5);
+        }
+
+        rigBone('spine', pose.Spine, lp * 0.6);
+
+        /* Arms */
+        rigBone('rightUpperArm', pose.RightUpperArm, lp);
+        rigBone('rightLowerArm', pose.RightLowerArm, lp);
+        rigBone('leftUpperArm',  pose.LeftUpperArm,  lp);
+        rigBone('leftLowerArm',  pose.LeftLowerArm,  lp);
+    }
+
+    /* ── Apply hand rig ────────────────────── */
+    function applyHandRig(hand, side) {
+        if (!hand || !currentVrm) return;
+        const lh = CONFIG.lerpAmount;
+        const s  = side === 'Right' ? 'right' : 'left';
+
+        const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'];
+        const segments = ['Proximal', 'Intermediate', 'Distal'];
+
+        for (const finger of fingerNames) {
+            for (const seg of segments) {
+                const kalidoKey = `${side}${finger}${seg}`;
+                const vrmKey    = `${s}${finger}${seg}`;
+                if (hand[kalidoKey]) {
+                    rigBone(vrmKey, hand[kalidoKey], lh);
+                }
+            }
+        }
+
+        /* Wrist */
+        const wristKey = `${side}Wrist`;
+        if (hand[wristKey]) {
+            rigBone(`${s}Hand`, hand[wristKey], lh);
+        }
+    }
+
+    /* ── Receive rig data from tracker via Socket.IO ── */
+    function onRigData(data) {
+        if (!data || !currentVrm) return;
+        latestRig   = data;
+        lastRigTime = performance.now();
+
+        if (!trackingActive) {
+            trackingActive = true;
+            flashStatus('Tracker Connected — Live');
+            console.log('[VRM] Receiving rig data from tracker');
+        }
+    }
+
+    /* ═══════════════════════════════════════════
+       IDLE  ANIMATIONS  (fallback when no tracker)
+       ═══════════════════════════════════════════ */
+
+    function updateIdleAnimations(delta) {
+        if (!currentVrm) return;
+        elapsedTime += delta;
+
+        const spine = currentVrm.humanoid?.getNormalizedBoneNode('spine');
+        if (spine) spine.rotation.x = Math.sin(elapsedTime * CONFIG.idleBreathingSpeed * Math.PI) * CONFIG.idleBreathingAmount;
+
+        const hips = currentVrm.humanoid?.getNormalizedBoneNode('hips');
+        if (hips) hips.rotation.z = Math.sin(elapsedTime * CONFIG.idleSwaySpeed) * CONFIG.idleSwayAmount;
+
+        if (CONFIG.autoLookAround) {
+            const head = currentVrm.humanoid?.getNormalizedBoneNode('head');
+            if (head) {
+                head.rotation.y = Math.sin(elapsedTime * CONFIG.lookAroundSpeed * 0.7) * CONFIG.lookAroundAmount;
+                head.rotation.x = Math.sin(elapsedTime * CONFIG.lookAroundSpeed * 0.5 + 1.2) * CONFIG.lookAroundAmount * 0.6;
+            }
+        }
+
+        updateIdleBlink();
+    }
+
+    function updateIdleBlink() {
+        if (!currentVrm?.expressionManager) return;
+        const now = performance.now();
+        if (!isBlinking && now - lastBlinkTime > CONFIG.blinkInterval + Math.random() * 1500) {
+            isBlinking = true; blinkStartTime = now; lastBlinkTime = now;
+        }
+        if (isBlinking) {
+            const elapsed = now - blinkStartTime;
+            const half = CONFIG.blinkDuration / 2;
+            let val = 0;
+            if (elapsed < half) val = elapsed / half;
+            else if (elapsed < CONFIG.blinkDuration) val = 1 - (elapsed - half) / half;
+            else { val = 0; isBlinking = false; }
+            currentVrm.expressionManager.setValue('blink', val);
+        }
+    }
+
+    /* ═══════════════════════════════════════════
+       EXPRESSION / MOTION  (stream-event driven)
+       ═══════════════════════════════════════════ */
+
+    let currentExpression = null;
+    let expressionFade = 0, expressionTarget = 0;
+
+    function applyExpression(data) {
+        if (!currentVrm?.expressionManager || !data) return;
+        if (currentExpression && currentExpression !== data.expression)
+            currentVrm.expressionManager.setValue(currentExpression, 0);
+        currentExpression = data.expression || null;
+        expressionTarget  = data.intensity ?? 1.0;
+        if (data.duration) {
+            setTimeout(() => { expressionTarget = 0; setTimeout(() => { currentExpression = null; }, 300); }, data.duration);
+        }
+    }
+
+    function updateExpression(delta) {
+        if (!currentVrm?.expressionManager || !currentExpression) return;
+        expressionFade += (expressionTarget - expressionFade) * Math.min(delta * 8, 1);
+        currentVrm.expressionManager.setValue(currentExpression, expressionFade);
+    }
+
+    function applyMotion(data) {
+        if (!currentVrm?.humanoid || !data?.type) return;
+        if (data.type === 'nod')       animateNod();
+        if (data.type === 'wave')      animateWave();
+        if (data.type === 'headShake') animateHeadShake();
+    }
+
+    function animateNod() {
+        const h = currentVrm?.humanoid?.getNormalizedBoneNode('head'); if (!h) return;
+        const o = h.rotation.x;
+        [{ v: o - 0.15, t: 150 }, { v: o + 0.05, t: 300 }, { v: o, t: 450 }]
+            .forEach(({ v, t }) => setTimeout(() => { h.rotation.x = v; }, t));
+    }
+    function animateWave() {
+        const a = currentVrm?.humanoid?.getNormalizedBoneNode('rightUpperArm'); if (!a) return;
+        const o = a.rotation.z;
+        [{ v: o - 1.2, t: 150 }, { v: o - 0.8, t: 400 }, { v: o - 1.2, t: 650 }, { v: o, t: 1000 }]
+            .forEach(({ v, t }) => setTimeout(() => { a.rotation.z = v; }, t));
+    }
+    function animateHeadShake() {
+        const h = currentVrm?.humanoid?.getNormalizedBoneNode('head'); if (!h) return;
+        const o = h.rotation.y;
+        [{ v: o + 0.12, t: 100 }, { v: o - 0.12, t: 250 }, { v: o + 0.08, t: 400 }, { v: o, t: 550 }]
+            .forEach(({ v, t }) => setTimeout(() => { h.rotation.y = v; }, t));
+    }
+
+    function onAlert(data) {
+        if (!currentVrm) return;
+        if (data.type === 'follow') {
+            applyExpression({ expression: 'happy', intensity: 0.8, duration: 2000 });
+            setTimeout(() => applyMotion({ type: 'wave' }), 200);
+        } else if (data.type === 'sub') {
+            applyExpression({ expression: 'happy', intensity: 1.0, duration: 3000 });
+            setTimeout(() => applyMotion({ type: 'nod' }), 300);
+        } else if (data.type === 'raid') {
+            applyExpression({ expression: 'surprised', intensity: 1.0, duration: 2500 });
+            setTimeout(() => applyMotion({ type: 'wave' }), 400);
+        }
+    }
+
+    function onChatMessage(data) {
+        if (!currentVrm || Math.random() > 0.15) return;
+        applyMotion({ type: 'nod' });
+    }
+
+    /* ── Settings from API/Socket ──────────── */
+    function applySettings(data) {
+        if (!data) return;
+        if (data.vrmPath && data.vrmPath !== CONFIG.vrmPath) {
+            CONFIG.vrmPath = data.vrmPath;
+            loadVRM(CONFIG.vrmPath);
+        }
+        if (typeof data.idleBreathingSpeed === 'number') CONFIG.idleBreathingSpeed = data.idleBreathingSpeed;
+        if (typeof data.idleSwayAmount === 'number')     CONFIG.idleSwayAmount = data.idleSwayAmount;
+        if (typeof data.autoLookAround === 'boolean')    CONFIG.autoLookAround = data.autoLookAround;
+        if (typeof data.blinkInterval === 'number')      CONFIG.blinkInterval = data.blinkInterval;
+        if (typeof data.lerpAmount === 'number')         CONFIG.lerpAmount = data.lerpAmount;
+        if (typeof data.lerpAmountFace === 'number')     CONFIG.lerpAmountFace = data.lerpAmountFace;
+        if (data.cameraPosition) {
+            camera.position.set(
+                data.cameraPosition.x ?? camera.position.x,
+                data.cameraPosition.y ?? camera.position.y,
+                data.cameraPosition.z ?? camera.position.z
+            );
+        }
+        if (data.cameraLookAt) {
+            camera.lookAt(
+                data.cameraLookAt.x ?? CONFIG.cameraLookAt.x,
+                data.cameraLookAt.y ?? CONFIG.cameraLookAt.y,
+                data.cameraLookAt.z ?? CONFIG.cameraLookAt.z
+            );
+        }
+    }
+
+    /* ═══════════════════════════════════════════
+       RENDER  LOOP
+       ═══════════════════════════════════════════ */
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        const now = performance.now();
+
+        /* If we haven't received rig data in a while, fall back to idle */
+        if (trackingActive && (now - lastRigTime > RIG_TIMEOUT)) {
+            trackingActive = false;
+            latestRig = null;
+            flashStatus('Tracker disconnected — idle mode');
+            console.log('[VRM] No rig data for 3s, falling back to idle');
+        }
+
+        if (trackingActive && latestRig) {
+            /* Webcam-driven mode (data from tracker page) */
+            applyFaceRig(latestRig.face);
+            applyPoseRig(latestRig.pose);
+            applyHandRig(latestRig.rightHand, 'Right');
+            applyHandRig(latestRig.leftHand, 'Left');
+        } else {
+            /* Idle fallback */
+            updateIdleAnimations(delta);
+        }
+
+        /* Stream-event expressions overlay on top of either mode */
+        updateExpression(delta);
+
+        if (currentVrm)   currentVrm.update(delta);
+        if (currentMixer)  currentMixer.update(delta);
+        renderer.render(scene, camera);
+    }
+
+    /* ═══════════════════════════════════════════
+       INIT
+       ═══════════════════════════════════════════ */
+
+    async function init() {
+        /* Fetch server settings */
+        try {
+            const resp = await fetch('/api/avatar/settings');
+            if (resp.ok) {
+                const settings = await resp.json();
+                if (settings.vrmPath) CONFIG.vrmPath = settings.vrmPath;
+            }
+        } catch (e) {
+            console.log('[VRM] No stored settings, using defaults');
+        }
+
+        /* Load VRM model */
+        try {
+            await loadVRM(CONFIG.vrmPath);
+        } catch (e) {
+            showError(`VRM load failed: ${e.message || e}`);
+        }
+
+        /* Start render loop */
+        animate();
+        flashStatus('Waiting for tracker connection...');
+    }
+
+    init();
+</script>
+</body>
+</html>

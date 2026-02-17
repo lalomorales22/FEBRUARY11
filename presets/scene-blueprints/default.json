@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "generatedAt": "2026-02-12T21:19:12.238Z",
+  "streamType": "Gaming",
+  "overlayStyle": "Facecam",
+  "scenes": [
+    {
+      "name": "Gameplay",
+      "role": "gameplay"
+    },
+    {
+      "name": "Camera",
+      "role": "camera"
+    },
+    {
+      "name": "Facecam",
+      "role": "aux"
+    },
+    {
+      "name": "Camera React",
+      "role": "aux"
+    }
+  ]
+}

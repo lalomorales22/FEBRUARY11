@@ -1,0 +1,36 @@
+{
+  "name": "february11",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dark-themed OBS WebSocket mega dashboard for chaos automation and live stream control.",
+  "scripts": {
+    "dev": "tsx watch backend/src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/backend/src/server.js",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage \"tests/**/*.test.ts\"",
+    "setup:map-obs-names": "node scripts/setup/map-obs-names.mjs",
+    "overlays:setup": "cd OBS-Overlays && bash setup.sh",
+    "overlays:serve": "bash scripts/setup/run-overlays.sh",
+    "load:event-burst": "node scripts/load/event-burst.mjs",
+    "load:reconnect-storm": "node scripts/load/reconnect-storm.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "obs-websocket-js": "^5.0.6",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.23",
+    "@types/node": "^22.15.3",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

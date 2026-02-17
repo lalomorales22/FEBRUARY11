@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Alerts Overlay</title>
+<style>
+    /* === OBS BROWSER SOURCE - TRANSPARENT BG === */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: {{ config.THEME.font }};
+    }
+
+    /* === ALERT CONTAINER === */
+    #alert-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .alert-box {
+        background: {{ config.THEME.alert_bg }};
+        border: 2px solid {{ config.THEME.primary }};
+        border-radius: 16px;
+        padding: 30px 40px;
+        opacity: 0;
+        transform: scale(0.5) translateY(30px);
+        animation: alertIn 0.5s ease forwards;
+        box-shadow:
+            0 0 30px rgba(145, 71, 255, 0.4),
+            0 0 60px rgba(145, 71, 255, 0.2),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .alert-box.exit {
+        animation: alertOut 0.5s ease forwards;
+    }
+
+    @keyframes alertIn {
+        0% { opacity: 0; transform: scale(0.5) translateY(30px); }
+        50% { transform: scale(1.05) translateY(-5px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes alertOut {
+        0% { opacity: 1; transform: scale(1) translateY(0); }
+        100% { opacity: 0; transform: scale(0.8) translateY(-30px); }
+    }
+
+    /* === ALERT ICON === */
+    .alert-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+        animation: bounce 0.6s ease infinite alternate;
+    }
+
+    @keyframes bounce {
+        from { transform: translateY(0); }
+        to { transform: translateY(-8px); }
+    }
+
+    /* === ALERT TEXT === */
+    .alert-type {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        color: {{ config.THEME.secondary }};
+        margin-bottom: 8px;
+    }
+
+    .alert-username {
+        font-size: 32px;
+        font-weight: 900;
+        color: {{ config.THEME.text }};
+        text-shadow: 0 0 20px rgba(145, 71, 255, 0.5);
+        margin-bottom: 6px;
+    }
+
+    .alert-message {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* === TYPE-SPECIFIC COLORS === */
+    .alert-box.follow { border-color: {{ config.THEME.primary }}; }
+    .alert-box.follow .alert-username { text-shadow: 0 0 20px rgba(145, 71, 255, 0.5); }
+
+    .alert-box.sub { border-color: #ffcc00; }
+    .alert-box.sub .alert-type { color: #ffcc00; }
+    .alert-box.sub .alert-username { text-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
+
+    .alert-box.raid { border-color: #ff4444; }
+    .alert-box.raid .alert-type { color: #ff4444; }
+    .alert-box.raid .alert-username { text-shadow: 0 0 20px rgba(255, 68, 68, 0.5); }
+
+    .alert-box.bits { border-color: #00e5ff; }
+    .alert-box.bits .alert-type { color: #00e5ff; }
+    .alert-box.bits .alert-username { text-shadow: 0 0 20px rgba(0, 229, 255, 0.5); }
+    .alert-box.bits .alert-amount { font-size: 24px; font-weight: 700; color: #00e5ff; margin-top: 4px; }
+
+    .alert-box.donation { border-color: #00e676; }
+    .alert-box.donation .alert-type { color: #00e676; }
+    .alert-box.donation .alert-username { text-shadow: 0 0 20px rgba(0, 230, 118, 0.5); }
+    .alert-box.donation .alert-amount { font-size: 24px; font-weight: 700; color: #00e676; margin-top: 4px; }
+
+    /* === PARTICLES (decorative) === */
+    .particle {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: {{ config.THEME.primary }};
+        pointer-events: none;
+        animation: particle 1s ease-out forwards;
+    }
+
+    @keyframes particle {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+    }
+</style>
+</head>
+<body>
+
+<div id="alert-container"></div>
+
+<!-- SocketIO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const container = document.getElementById('alert-container');
+    const alertQueue = [];
+    let isShowingAlert = false;
+
+    // Icons for each alert type
+    const icons = {
+        follow: '💜',
+        sub: '⭐',
+        raid: '⚔️',
+        bits: '💎',
+        donation: '💚',
+    };
+
+    socket.on('alert', (data) => {
+        alertQueue.push(data);
+        processQueue();
+    });
+
+    function processQueue() {
+        if (isShowingAlert || alertQueue.length === 0) return;
+        isShowingAlert = true;
+        const data = alertQueue.shift();
+        showAlert(data);
+    }
+
+    function getTypeLabel(type) {
+        const labels = {
+            follow: 'New Follower',
+            sub: 'New Subscriber',
+            raid: 'Incoming Raid',
+            bits: 'Bits Cheer',
+            donation: 'Donation',
+        };
+        return labels[type] || type;
+    }
+
+    function showAlert(data) {
+        const duration = data.duration || {{ config.ALERT_DURATION }};
+        const icon = icons[data.type] || '🔔';
+        const amountHtml = data.amount ? `<div class="alert-amount">${escapeHtml(String(data.amount))} ${data.type === 'bits' ? 'bits' : ''}</div>` : '';
+
+        // Create alert element
+        const el = document.createElement('div');
+        el.className = `alert-box ${data.type}`;
+        el.innerHTML = `
+            <div class="alert-icon">${icon}</div>
+            <div class="alert-type">${getTypeLabel(data.type)}</div>
+            <div class="alert-username">${escapeHtml(data.username)}</div>
+            ${amountHtml}
+            <div class="alert-message">${escapeHtml(data.message || '')}</div>
+        `;
+
+        container.appendChild(el);
+        spawnParticles(el, data.type);
+
+        // Play sound
+        if (data.sound) {
+            const audio = new Audio(data.sound);
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+        }
+
+        // Remove after duration
+        setTimeout(() => {
+            el.classList.add('exit');
+            setTimeout(() => {
+                el.remove();
+                isShowingAlert = false;
+                processQueue();
+            }, 500);
+        }, duration);
+    }
+
+    function spawnParticles(parent, type) {
+        const colors = {
+            follow: ['#9147ff', '#bf94ff', '#00f0ff'],
+            sub: ['#ffcc00', '#ffe066', '#fff'],
+            raid: ['#ff4444', '#ff8888', '#ffcc00'],
+            bits: ['#00e5ff', '#64ffda', '#e0f7fa'],
+            donation: ['#00e676', '#69f0ae', '#e8f5e9'],
+        };
+        const palette = colors[type] || colors.follow;
+
+        for (let i = 0; i < 12; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const angle = (Math.PI * 2 * i) / 12;
+            const dist = 80 + Math.random() * 60;
+            p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+            p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+            p.style.background = palette[i % palette.length];
+            p.style.left = '50%';
+            p.style.top = '50%';
+            parent.appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

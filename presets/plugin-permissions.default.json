@@ -1,0 +1,12 @@
+{
+  "defaultPolicy": "deny",
+  "vendors": [
+    {
+      "vendorName": "obs-browser",
+      "enabled": true,
+      "allowedRequests": ["*"],
+      "allowedRoles": ["operator", "admin"],
+      "notes": "Example vendor permission entry. Tighten this in production."
+    }
+  ]
+}

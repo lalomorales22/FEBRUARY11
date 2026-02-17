@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "generatedAt": "2026-02-12T21:19:12.238Z",
+  "streamType": "Gaming",
+  "theme": "Facecam",
+  "widgets": [
+    {
+      "id": "alerts",
+      "enabled": true
+    },
+    {
+      "id": "chat",
+      "enabled": true
+    },
+    {
+      "id": "stats",
+      "enabled": true
+    }
+  ]
+}

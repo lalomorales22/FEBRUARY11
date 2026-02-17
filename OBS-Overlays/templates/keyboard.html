@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Keyboard Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        width: 1280px;
+        height: 420px;
+    }
+
+    #keyboard-wrap {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        width: min(1220px, 98vw);
+        border-radius: 28px;
+        padding: 16px 18px 12px;
+        background: linear-gradient(160deg, rgba(32, 34, 47, 0.72), rgba(18, 20, 30, 0.58));
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow:
+            0 14px 48px rgba(0, 0, 0, 0.42),
+            inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        pointer-events: none;
+    }
+
+    #keyboard-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .key-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .key {
+        flex: var(--w, 1) 1 0;
+        min-width: 26px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.07);
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: transform 80ms linear, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
+    }
+
+    .key.small { font-size: 11px; }
+
+    .key.active {
+        transform: translateY(-2px);
+        border-color: rgba(127, 224, 255, 0.95);
+        color: #fff;
+        background: linear-gradient(135deg, rgba(0, 190, 255, 0.45), rgba(146, 89, 255, 0.42));
+        box-shadow:
+            0 0 0 1px rgba(127, 224, 255, 0.45) inset,
+            0 0 18px rgba(59, 189, 255, 0.45);
+    }
+
+    #kbd-meta {
+        margin-top: 9px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        letter-spacing: 0.6px;
+        color: rgba(255, 255, 255, 0.72);
+        text-transform: uppercase;
+    }
+
+    #kbd-status.error {
+        color: #ff9a9a;
+    }
+</style>
+</head>
+<body>
+<div id="keyboard-wrap">
+    <div id="keyboard-grid"></div>
+    <div id="kbd-meta">
+        <span id="kbd-source">Input: Listening</span>
+        <span id="kbd-status">Ready</span>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const keyboardGrid = document.getElementById('keyboard-grid');
+    const sourceEl = document.getElementById('kbd-source');
+    const statusEl = document.getElementById('kbd-status');
+
+    const aliasMap = new Map();
+    const releaseTimers = new Map();
+
+    const layout = [
+        [
+            k('Esc', 1, ['Escape']),
+            k('1', 1, ['1']),
+            k('2', 1, ['2']),
+            k('3', 1, ['3']),
+            k('4', 1, ['4']),
+            k('5', 1, ['5']),
+            k('6', 1, ['6']),
+            k('7', 1, ['7']),
+            k('8', 1, ['8']),
+            k('9', 1, ['9']),
+            k('0', 1, ['0']),
+            k('-', 1, ['-']),
+            k('=', 1, ['=']),
+            k('Backspace', 2, ['Backspace'])
+        ],
+        [
+            k('Tab', 1.5, ['Tab']),
+            k('Q', 1, ['Q']),
+            k('W', 1, ['W']),
+            k('E', 1, ['E']),
+            k('R', 1, ['R']),
+            k('T', 1, ['T']),
+            k('Y', 1, ['Y']),
+            k('U', 1, ['U']),
+            k('I', 1, ['I']),
+            k('O', 1, ['O']),
+            k('P', 1, ['P']),
+            k('[', 1, ['[']),
+            k(']', 1, [']']),
+            k('\\', 1.5, ['\\'])
+        ],
+        [
+            k('Caps', 1.9, ['CapsLock']),
+            k('A', 1, ['A']),
+            k('S', 1, ['S']),
+            k('D', 1, ['D']),
+            k('F', 1, ['F']),
+            k('G', 1, ['G']),
+            k('H', 1, ['H']),
+            k('J', 1, ['J']),
+            k('K', 1, ['K']),
+            k('L', 1, ['L']),
+            k(';', 1, [';']),
+            k('\'', 1, ["'"]),
+            k('Enter', 2.15, ['Enter'])
+        ],
+        [
+            k('Shift', 2.4, ['Shift']),
+            k('Z', 1, ['Z']),
+            k('X', 1, ['X']),
+            k('C', 1, ['C']),
+            k('V', 1, ['V']),
+            k('B', 1, ['B']),
+            k('N', 1, ['N']),
+            k('M', 1, ['M']),
+            k(',', 1, [',']),
+            k('.', 1, ['.']),
+            k('/', 1, ['/']),
+            k('Shift', 2.7, ['Shift'])
+        ],
+        [
+            k('Ctrl', 1.5, ['Ctrl']),
+            k('Alt', 1.5, ['Alt']),
+            k('Meta', 1.5, ['Meta']),
+            k('Space', 6.6, ['Space']),
+            k('Meta', 1.5, ['Meta']),
+            k('Alt', 1.5, ['Alt']),
+            k('Menu', 1.5, ['Menu']),
+            k('Ctrl', 1.5, ['Ctrl'])
+        ],
+        [
+            k('Left', 1, ['ArrowLeft']),
+            k('Up', 1, ['ArrowUp']),
+            k('Down', 1, ['ArrowDown']),
+            k('Right', 1, ['ArrowRight']),
+            k('PgUp', 1.1, ['PageUp']),
+            k('PgDn', 1.1, ['PageDown']),
+            k('Home', 1.1, ['Home']),
+            k('End', 1.1, ['End']),
+            k('Ins', 1.1, ['Insert']),
+            k('Del', 1.1, ['Delete'])
+        ]
+    ];
+
+    function k(label, width = 1, aliases = []) {
+        return { label, width, aliases };
+    }
+
+    function normalizeToken(value) {
+        if (typeof value !== 'string') return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        const normalized = trimmed.toLowerCase();
+        const map = {
+            'spacebar': 'Space',
+            'space': 'Space',
+            'escape': 'Escape',
+            'esc': 'Escape',
+            'return': 'Enter',
+            'caps': 'CapsLock',
+            'capslock': 'CapsLock',
+            'control': 'Ctrl',
+            'command': 'Meta',
+            'cmd': 'Meta',
+            'option': 'Alt',
+            'left': 'ArrowLeft',
+            'right': 'ArrowRight',
+            'up': 'ArrowUp',
+            'down': 'ArrowDown',
+            'pageup': 'PageUp',
+            'pagedown': 'PageDown'
+        };
+        if (map[normalized]) {
+            return map[normalized];
+        }
+        if (trimmed.length === 1) {
+            return trimmed.toUpperCase();
+        }
+        return trimmed;
+    }
+
+    function addAlias(alias, keyEl) {
+        const token = normalizeToken(alias);
+        if (!token) return;
+        const existing = aliasMap.get(token) || [];
+        existing.push(keyEl);
+        aliasMap.set(token, existing);
+    }
+
+    function renderKeyboard() {
+        layout.forEach((rowDef, rowIndex) => {
+            const row = document.createElement('div');
+            row.className = 'key-row';
+            rowDef.forEach((def) => {
+                const keyEl = document.createElement('div');
+                keyEl.className = `key${def.label.length > 6 ? ' small' : ''}`;
+                keyEl.style.setProperty('--w', String(def.width || 1));
+                keyEl.textContent = def.label;
+                row.appendChild(keyEl);
+                addAlias(def.label, keyEl);
+                (def.aliases || []).forEach((alias) => addAlias(alias, keyEl));
+            });
+
+            if (rowIndex === layout.length - 1) {
+                row.style.marginTop = '2px';
+            }
+            keyboardGrid.appendChild(row);
+        });
+    }
+
+    function setActive(token, isActive) {
+        const normalized = normalizeToken(token);
+        if (!normalized) return;
+        const targets = aliasMap.get(normalized) || [];
+        if (targets.length === 0) return;
+
+        targets.forEach((el) => el.classList.toggle('active', Boolean(isActive)));
+
+        if (isActive) {
+            if (releaseTimers.has(normalized)) {
+                clearTimeout(releaseTimers.get(normalized));
+            }
+            releaseTimers.set(
+                normalized,
+                setTimeout(() => {
+                    targets.forEach((el) => el.classList.remove('active'));
+                    releaseTimers.delete(normalized);
+                }, 260)
+            );
+        } else if (releaseTimers.has(normalized)) {
+            clearTimeout(releaseTimers.get(normalized));
+            releaseTimers.delete(normalized);
+        }
+    }
+
+    socket.on('keyboard_event', (data) => {
+        if (!data || typeof data !== 'object') return;
+        const action = data.action === 'up' ? 'up' : 'down';
+        const key = normalizeToken(String(data.key || ''));
+        if (!key) return;
+        setActive(key, action === 'down');
+    });
+
+    socket.on('keyboard_status', (data) => {
+        applyStatus(data);
+    });
+
+    function applyStatus(data) {
+        const available = Boolean(data && data.available);
+        const active = Boolean(data && data.active);
+        const lastError = typeof data?.last_error === 'string' ? data.last_error : '';
+        sourceEl.textContent = available && active ? 'Input: Global keyboard listener' : 'Input: Local (overlay focus)';
+        if (lastError) {
+            statusEl.classList.add('error');
+            statusEl.textContent = lastError;
+        } else {
+            statusEl.classList.remove('error');
+            statusEl.textContent = available ? 'Ready' : 'Fallback mode';
+        }
+    }
+
+    window.addEventListener('keydown', (event) => {
+        if (!event.repeat) {
+            setActive(event.key, true);
+        }
+    });
+
+    window.addEventListener('keyup', (event) => {
+        setActive(event.key, false);
+    });
+
+    fetch('/api/keyboard/status')
+        .then((response) => response.json())
+        .then((payload) => {
+            applyStatus(payload);
+        })
+        .catch(() => {
+            statusEl.textContent = 'Status unavailable';
+            statusEl.classList.add('error');
+        });
+
+    renderKeyboard();
+</script>
+</body>
+</html>

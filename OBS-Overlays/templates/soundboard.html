@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sound Board Overlay</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 1920px;
+        height: 1080px;
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+
+    #sound-display {
+        position: fixed;
+        bottom: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .sound-notification {
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #9147ff;
+        border-radius: 14px;
+        padding: 16px 32px;
+        opacity: 0;
+        transform: scale(0.6) translateY(20px);
+        animation: soundIn 0.4s ease forwards;
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 0 30px rgba(145, 71, 255, 0.3);
+    }
+
+    .sound-notification.exit {
+        animation: soundOut 0.4s ease forwards;
+    }
+
+    @keyframes soundIn {
+        0% { opacity: 0; transform: scale(0.6) translateY(20px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes soundOut {
+        0% { opacity: 1; transform: scale(1) translateY(0); }
+        100% { opacity: 0; transform: scale(0.8) translateY(-20px); }
+    }
+
+    .sound-icon {
+        font-size: 32px;
+        animation: bounce 0.5s ease infinite alternate;
+    }
+
+    @keyframes bounce {
+        from { transform: translateY(0); }
+        to { transform: translateY(-4px); }
+    }
+
+    .sound-info {
+        text-align: left;
+    }
+
+    .sound-name {
+        font-size: 18px;
+        font-weight: 900;
+        color: #ffffff;
+        text-shadow: 0 0 10px rgba(145, 71, 255, 0.5);
+    }
+
+    .sound-trigger {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 2px;
+    }
+
+    /* Audio wave animation */
+    .sound-wave {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        margin-left: 8px;
+    }
+
+    .sound-wave .bar {
+        width: 4px;
+        background: #9147ff;
+        border-radius: 2px;
+        animation: wave 0.6s ease infinite alternate;
+    }
+
+    .sound-wave .bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+    .sound-wave .bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+    .sound-wave .bar:nth-child(3) { height: 24px; animation-delay: 0.2s; }
+    .sound-wave .bar:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+    .sound-wave .bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+
+    @keyframes wave {
+        from { transform: scaleY(0.4); }
+        to { transform: scaleY(1); }
+    }
+</style>
+</head>
+<body>
+
+<div id="sound-display"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const display = document.getElementById('sound-display');
+    const soundQueue = [];
+    let isShowing = false;
+
+    socket.on('soundboard_play', (data) => {
+        // Play audio
+        if (data.file) {
+            const audio = new Audio(data.file);
+            audio.volume = data.volume || 0.7;
+            audio.play().catch(() => {});
+        }
+
+        // Show notification if enabled
+        if (data.showOverlay !== false) {
+            soundQueue.push(data);
+            processQueue();
+        }
+    });
+
+    function processQueue() {
+        if (isShowing || soundQueue.length === 0) return;
+        isShowing = true;
+        const data = soundQueue.shift();
+        showNotification(data);
+    }
+
+    function showNotification(data) {
+        const el = document.createElement('div');
+        el.className = 'sound-notification';
+        el.innerHTML = `
+            <div class="sound-icon">${data.icon || '🔊'}</div>
+            <div class="sound-info">
+                <div class="sound-name">${escapeHtml(data.name || 'Sound Effect')}</div>
+                <div class="sound-trigger">${escapeHtml(data.triggeredBy || '')}</div>
+            </div>
+            <div class="sound-wave">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+        `;
+
+        display.appendChild(el);
+
+        const duration = data.displayDuration || 3000;
+        setTimeout(() => {
+            el.classList.add('exit');
+            setTimeout(() => {
+                el.remove();
+                isShowing = false;
+                processQueue();
+            }, 400);
+        }, duration);
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

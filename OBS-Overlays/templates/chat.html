@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: {{ config.THEME.font }};
+    }
+
+    /* === CHAT CONTAINER === */
+    #chat-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 10px;
+    }
+
+    /* === INDIVIDUAL MESSAGE === */
+    .chat-msg {
+        background: {{ config.THEME.chat_bg }};
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 4px;
+        opacity: 0;
+        transform: translateX(-20px);
+        animation: msgIn 0.3s ease forwards;
+        border-left: 3px solid var(--user-color);
+        max-width: 100%;
+        word-wrap: break-word;
+    }
+
+    .chat-msg.exit {
+        animation: msgOut 0.3s ease forwards;
+    }
+
+    @keyframes msgIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes msgOut {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* === BADGES === */
+    .chat-badges {
+        display: inline;
+        margin-right: 4px;
+    }
+
+    .badge {
+        display: inline-block;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        margin-right: 3px;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+
+    .badge.mod {
+        background: #00ad03;
+        color: #fff;
+    }
+
+    .badge.sub {
+        background: #9147ff;
+        color: #fff;
+    }
+
+    .badge.vip {
+        background: #e005b9;
+        color: #fff;
+    }
+
+    /* === USERNAME === */
+    .chat-user {
+        font-weight: 700;
+        color: var(--user-color);
+        margin-right: 6px;
+        font-size: 14px;
+    }
+
+    /* === MESSAGE TEXT === */
+    .chat-text {
+        color: {{ config.THEME.text }};
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    /* === TIMESTAMP === */
+    .chat-time {
+        color: rgba(255,255,255,0.3);
+        font-size: 11px;
+        margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+
+<div id="chat-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const container = document.getElementById('chat-container');
+    const MAX_MESSAGES = {{ config.CHAT_MAX_MESSAGES }};
+
+    socket.on('chat_message', (data) => {
+        addMessage(data);
+    });
+
+    function addMessage(data) {
+        const el = document.createElement('div');
+        el.className = 'chat-msg';
+        el.style.setProperty('--user-color', data.color || '#9147ff');
+
+        // Build badges
+        let badges = '';
+        if (data.is_mod) badges += '<span class="badge mod">MOD</span>';
+        if (data.is_sub) badges += '<span class="badge sub">SUB</span>';
+
+        el.innerHTML = `
+            <span class="chat-time">${data.timestamp || ''}</span>
+            <span class="chat-badges">${badges}</span>
+            <span class="chat-user">${escapeHtml(data.display_name || data.username)}</span>
+            <span class="chat-text">${escapeHtml(data.message)}</span>
+        `;
+
+        container.appendChild(el);
+
+        // Remove old messages if over limit
+        while (container.children.length > MAX_MESSAGES) {
+            const old = container.firstChild;
+            old.classList.add('exit');
+            setTimeout(() => old.remove(), 300);
+        }
+
+        // Auto-scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

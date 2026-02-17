@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Goal Tracker Overlay</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+
+    #goals-container {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        width: 340px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .goal-card {
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 12px;
+        padding: 14px 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        opacity: 0;
+        transform: translateX(-20px);
+        animation: goalIn 0.5s ease forwards;
+    }
+
+    @keyframes goalIn {
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    .goal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .goal-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .goal-label.followers { color: #9147ff; }
+    .goal-label.subs { color: #ffcc00; }
+    .goal-label.donations { color: #00e676; }
+    .goal-label.bits { color: #00e5ff; }
+
+    .goal-count {
+        font-size: 14px;
+        font-weight: 900;
+        color: #ffffff;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .goal-bar-track {
+        width: 100%;
+        height: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .goal-bar-fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+    }
+
+    .goal-bar-fill.followers { background: linear-gradient(90deg, #9147ff, #bf94ff); }
+    .goal-bar-fill.subs { background: linear-gradient(90deg, #ffcc00, #ffe066); }
+    .goal-bar-fill.donations { background: linear-gradient(90deg, #00c853, #69f0ae); }
+    .goal-bar-fill.bits { background: linear-gradient(90deg, #00b8d4, #64ffda); }
+
+    .goal-bar-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 30px;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+        border-radius: 0 5px 5px 0;
+    }
+
+    .goal-bar-fill.complete {
+        animation: barPulse 1.5s ease infinite;
+    }
+
+    @keyframes barPulse {
+        0%, 100% { filter: brightness(1); }
+        50% { filter: brightness(1.3); }
+    }
+
+    .goal-hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="goals-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    const container = document.getElementById('goals-container');
+    const goalElements = {};
+
+    const icons = {
+        followers: '💜',
+        subs: '⭐',
+        donations: '💚',
+        bits: '💎',
+    };
+
+    function createGoalCard(goal) {
+        const card = document.createElement('div');
+        card.className = 'goal-card';
+        card.id = `goal-${goal.id}`;
+        card.innerHTML = `
+            <div class="goal-header">
+                <span class="goal-label ${goal.type}">${icons[goal.type] || '🎯'} ${escapeHtml(goal.title)}</span>
+                <span class="goal-count">${goal.current} / ${goal.target}</span>
+            </div>
+            <div class="goal-bar-track">
+                <div class="goal-bar-fill ${goal.type}" style="width: ${Math.min(100, (goal.current / goal.target) * 100)}%${goal.current >= goal.target ? '' : ''}"></div>
+            </div>
+        `;
+        if (goal.current >= goal.target) {
+            card.querySelector('.goal-bar-fill').classList.add('complete');
+        }
+        return card;
+    }
+
+    function updateGoals(goals) {
+        container.innerHTML = '';
+        (goals || []).forEach((goal, i) => {
+            if (!goal.enabled) return;
+            const card = createGoalCard(goal);
+            card.style.animationDelay = `${i * 0.1}s`;
+            container.appendChild(card);
+        });
+    }
+
+    socket.on('goals_update', (data) => {
+        updateGoals(data.goals || data);
+    });
+
+    // Fetch initial goals
+    fetch('/api/goals')
+        .then(r => r.json())
+        .then(data => updateGoals(data.goals || []))
+        .catch(() => {});
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>
