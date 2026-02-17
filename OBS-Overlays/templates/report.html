@@ -18,7 +18,7 @@
     h1 {
         font-size: 28px;
         font-weight: 900;
-        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        background: linear-gradient(135deg, #38bdf8, #e2e8f0);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 6px;
@@ -49,7 +49,7 @@
     .stat-card .value {
         font-size: 36px;
         font-weight: 900;
-        background: linear-gradient(135deg, #9147ff, #00f0ff);
+        background: linear-gradient(135deg, #38bdf8, #e2e8f0);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -100,7 +100,7 @@
         border-bottom: 1px solid rgba(255,255,255,0.04);
     }
 
-    .rank { color: #9147ff; font-weight: 700; width: 30px; }
+    .rank { color: #38bdf8; font-weight: 700; width: 30px; }
     .bar-track {
         height: 8px;
         background: rgba(255,255,255,0.06);
@@ -111,7 +111,7 @@
     .bar-fill {
         height: 100%;
         border-radius: 4px;
-        background: linear-gradient(90deg, #9147ff, #00f0ff);
+        background: linear-gradient(90deg, #38bdf8, #e2e8f0);
     }
 
     .timeline-chart {
@@ -125,7 +125,7 @@
     .timeline-bar {
         flex: 1;
         min-width: 4px;
-        background: linear-gradient(180deg, #9147ff, #00f0ff);
+        background: linear-gradient(180deg, #38bdf8, #e2e8f0);
         border-radius: 2px 2px 0 0;
         position: relative;
         cursor: pointer;
@@ -153,8 +153,8 @@
         font-size: 12px;
         font-weight: 600;
         margin: 2px 4px;
-        background: rgba(145,71,255,0.2);
-        color: #bf94ff;
+        background: rgba(56,189,248,0.2);
+        color: #94a3b8;
     }
 
     .goal-item {
@@ -177,7 +177,7 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #9147ff;
+        background: #38bdf8;
         color: #fff;
         border: none;
         padding: 10px 20px;
@@ -187,7 +187,7 @@
         cursor: pointer;
         z-index: 100;
     }
-    .print-btn:hover { background: #772ce8; }
+    .print-btn:hover { background: #7dd3fc; }
 
     @media print {
         .print-btn { display: none; }
@@ -228,7 +228,7 @@
 
             <div class="grid">
                 <div class="stat-card"><div class="icon">👥</div><div class="value">${s.peak_viewers || 0}</div><div class="label">Peak Viewers</div></div>
-                <div class="stat-card"><div class="icon">💜</div><div class="value">${s.followers || 0}</div><div class="label">New Followers</div></div>
+                <div class="stat-card"><div class="icon">🤍</div><div class="value">${s.followers || 0}</div><div class="label">New Followers</div></div>
                 <div class="stat-card"><div class="icon">⭐</div><div class="value">${s.subs || 0}</div><div class="label">New Subs</div></div>
                 <div class="stat-card"><div class="icon">💬</div><div class="value">${s.total_messages || 0}</div><div class="label">Chat Messages</div></div>
                 <div class="stat-card"><div class="icon">⚔️</div><div class="value">${s.raids || 0}</div><div class="label">Raids</div></div>
@@ -272,7 +272,7 @@
 
         // New Followers
         if (d.new_followers.length > 0) {
-            html += `<div class="section"><h2>💜 New Followers (${d.new_followers.length})</h2><div>`;
+            html += `<div class="section"><h2>🤍 New Followers (${d.new_followers.length})</h2><div>`;
             d.new_followers.forEach(f => {
                 html += `<span class="event-badge">${esc(f.username)}</span>`;
             });
@@ -299,12 +299,12 @@
 
         // Goals
         if (d.goals && d.goals.length > 0) {
-            const goalColors = { followers: '#9147ff', subs: '#ffcc00', donations: '#00e676', bits: '#00e5ff' };
-            const goalIcons = { followers: '💜', subs: '⭐', donations: '💚', bits: '💎' };
+            const goalColors = { followers: '#38bdf8', subs: '#facc15', donations: '#4ade80', bits: '#e2e8f0' };
+            const goalIcons = { followers: '🤍', subs: '⭐', donations: '💚', bits: '💎' };
             html += `<div class="section"><h2>🎯 Goal Progress</h2>`;
             d.goals.forEach(g => {
                 const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100) : 0;
-                const color = goalColors[g.type] || '#9147ff';
+                const color = goalColors[g.type] || '#38bdf8';
                 const icon = goalIcons[g.type] || '🎯';
                 const status = pct >= 100 ? '✅ Complete!' : `${Math.round(pct)}%`;
                 html += `<div class="goal-item">
